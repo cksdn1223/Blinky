@@ -1,23 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { Play, ListMusic, Trash2, X, Plus, Repeat1, Repeat } from 'lucide-react';
+import { Play, ListMusic, Trash2, X, Plus, Repeat1, Repeat, VolumeX, Volume1, Volume2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { YouTubePlayerProps, PlaylistItem } from '../types';
 
 declare global {
   interface Window {
     onYouTubeIframeAPIReady: () => void;
   }
 }
-type PlaylistItem = {
-  id: string;
-  title: string;
-  url: string;
-}
 
-type YouTubePlayerProps = {
-  className?: string;
-}
 
-const YouTubePlayer = ({ className }: YouTubePlayerProps) => {
+const YouTubePlayer = ({ className, onTick, setIsPlaying }: YouTubePlayerProps) => {
   const [videoUrl, setVideoUrl] = useState("first");
   const playerRef = useRef<YT.Player | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -29,6 +22,8 @@ const YouTubePlayer = ({ className }: YouTubePlayerProps) => {
   const [isListOpen, setIsListOpen] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
   const isRepeatRef = useRef(isRepeat);
+  const [volume, setVolume] = useState<number>(50); // 기본값 50
+  const [isVolumeOpen, setIsVolumeOpen] = useState(false);
 
   useEffect(() => {
     isRepeatRef.current = isRepeat;
@@ -44,9 +39,10 @@ const YouTubePlayer = ({ className }: YouTubePlayerProps) => {
     return match && match[2].length === 11 ? match[2] : null;
   };
   const formatTime = (seconds: number) => {
-    const min = Math.floor(seconds / 60);
+    const hour = Math.floor(seconds / 3600);
+    const min = Math.floor(seconds % 3600 / 60);
     const sec = Math.floor(seconds % 60);
-    return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+    return `${hour}:${min}:${String(sec).padStart(2, '0')}`;
   };
 
   const handleAddToList = async () => {
@@ -92,15 +88,57 @@ const YouTubePlayer = ({ className }: YouTubePlayerProps) => {
     setPlaylist(prev => prev.filter(item => item.id !== id));
   };
 
+  const handleNextTrack = (videoId: string) => {
+    const currentPlaylist = playlistRef.current;
+    const currentIndex = currentPlaylist.findIndex(item => item.id === videoId);
+
+    if (currentIndex !== -1) {
+      const nextItem = currentPlaylist[currentIndex + 1];
+      if (nextItem) {
+        setVideoUrl(nextItem.url);
+      } else {
+        setVideoUrl("first");
+        setVideoTitle("YOUTUBE 링크를 복사 후 재생버튼을 눌러주세요.");
+        setCurrentTime(0);
+        setDuration(0);
+      }
+
+      setPlaylist(prev => prev.filter(item => item.id !== videoId));
+    }
+  }
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseInt(e.target.value);
+    setVolume(newVolume);
+
+    if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+      playerRef.current.setVolume(newVolume);
+
+      if (newVolume > 0 && playerRef.current.isMuted()) {
+        playerRef.current.unMute();
+      }
+    }
+  };
+
+  const getVolumeIcon = () => {
+    if (volume === 0) return <VolumeX size={18} />;
+    if (volume < 50) return <Volume1 size={18} />;
+    return <Volume2 size={18} />;
+  };
+
   useEffect(() => {
     if (!window.YT) {
       const tag = document.createElement('script');
       tag.src = "https://www.youtube.com/iframe_api";
-      document.head.appendChild(tag);
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
     }
+  }, []);
 
+  useEffect(() => {
     const videoId = getYoutubeId(videoUrl);
     let interval: ReturnType<typeof setInterval>;
+
     // 영상 제목 가져오기 (oEmbed API)
     if (videoId && videoUrl !== "first") {
       fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
@@ -109,80 +147,93 @@ const YouTubePlayer = ({ className }: YouTubePlayerProps) => {
         .catch(() => setVideoTitle("재생 중인 음악"));
     }
 
-    const initPlayer = (): void => {
-      if (!videoId || !containerRef.current) return;
-      if (playerRef.current) playerRef.current.destroy();
+    const createPlayer = () => {
+      if (!videoId || !containerRef.current || !window.YT || !window.YT.Player) return;
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
 
       playerRef.current = new window.YT.Player(containerRef.current, {
         videoId: videoId,
-        playerVars: { autoplay: 1, rel: 0, controls: 0, modestbranding: 1 },
+        playerVars: {
+          autoplay: 1,
+          rel: 0,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          modestbranding: 1,
+          iv_load_policy: 3,
+          origin: window.location.origin,
+          enablejsapi: 1,
+          mute: 0,
+        },
         events: {
           onReady: (e: YT.PlayerEvent) => {
             e.target.playVideo();
+            e.target.setVolume(volume);
             setDuration(e.target.getDuration() - 1); // 전체 길이 설정
           },
           onStateChange: (e: YT.OnStateChangeEvent) => {
             // 재생 중일 때만 인터벌 가동
             if (e.data === window.YT.PlayerState.PLAYING) {
+              setIsPlaying?.(true);
               interval = setInterval(() => {
-                if (playerRef.current) {
+                if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
                   setCurrentTime(playerRef.current.getCurrentTime());
+                  onTick?.();
                 }
               }, 1000);
-            } else if (e.data === window.YT.PlayerState.ENDED) {
+            } else {
+              setIsPlaying?.(false);
               clearInterval(interval);
-              if (isRepeatRef.current) {
-                e.target.playVideo();
-              } else {
-                const currentPlaylist = playlistRef.current;
-                const currentIndex = currentPlaylist.findIndex(item => item.id === videoId);
 
-                if (currentIndex !== -1) {
-                  const nextItem = currentPlaylist[currentIndex + 1];
-                  if (nextItem) {
-                    setVideoUrl(nextItem.url);
-                  } else {
-                    setVideoUrl("first");
-                    setVideoTitle("YOUTUBE 링크를 복사 후 재생버튼을 눌러주세요.");
-                    setCurrentTime(0);
-                    setDuration(0);
-                  }
-
-                  setPlaylist(prev => prev.filter(item => item.id !== videoId));
+              if (e.data === window.YT.PlayerState.ENDED) {
+                if (isRepeatRef.current) {
+                  e.target.playVideo();
+                } else {
+                  handleNextTrack(videoId);
                 }
               }
-            } else {
-              clearInterval(interval);
             }
           }
         },
       });
     };
 
-    if (window.YT && window.YT.Player) initPlayer();
-    else window.onYouTubeIframeAPIReady = initPlayer;
+    if (window.YT && window.YT.Player) createPlayer();
+    else {
+      // API가 아직 로드 중이면 로드 완료 후 실행되도록 대기
+      const checkYT = setInterval(() => {
+        if (window.YT && window.YT.Player) {
+          createPlayer();
+          clearInterval(checkYT);
+        }
+      }, 100);
+      return () => clearInterval(checkYT);
+    }
 
     return () => {
       if (playerRef.current) playerRef.current.destroy();
       clearInterval(interval);
     };
-  }, [videoUrl, setVideoUrl]);
+  }, [videoUrl, onTick, volume, setIsPlaying]);
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className={`${className} relative flex flex-row bg-[#1a1c1e] rounded-3xl border border-white/10 shadow-2xl overflow-visible`}>
+    <div className={`${className} relative flex flex-row bg-[#1a1c1e] rounded-3xl overflow-visible border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)]`}>
 
       {/* 재생목록 드롭다운 */}
       {isListOpen && (
-        <div className="absolute bottom-[calc(100%+12px)] right-0 w-[300px] z-[100] bg-[#1a1c1e]/95 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="absolute bottom-[calc(100%+12px)] right-0 w-[300px] z-[130] bg-[#1a1c1e]/95 backdrop-blur-xl p-4 rounded-2xl border border-white/10 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
           <div className="flex justify-between items-center mb-3 border-b border-white/5 pb-2">
             <span className="text-[10px] font-black text-green-500 uppercase tracking-[0.2em]">Playlist ({playlist.length})</span>
             <button onClick={() => setIsListOpen(false)} className="text-white/20 hover:text-white">
               <X size={16} />
             </button>
           </div>
-          <div className="overflow-y-auto max-h-[200px] pr-1 custom-scrollbar">
+          <div className="overflow-y-auto max-h-[135px] pr-1 custom-scrollbar">
             {playlist.length === 0 ? (
               <p className="text-white/20 text-[11px] text-center py-10 font-mono">No tracks added yet.</p>
             ) : (
@@ -209,7 +260,7 @@ const YouTubePlayer = ({ className }: YouTubePlayerProps) => {
       )}
 
       {/* Video Area */}
-      <div className="w-[28%] bg-black relative flex items-center justify-center border-r border-white/5 overflow-hidden rounded-l-3xl">
+      <span className="w-[175px] bg-black relative flex items-center justify-center overflow-hidden rounded-l-3xl">
         {videoUrl === "first" ? (
           <div className="flex flex-col items-center opacity-10">
             <Play size={24} className="text-white" fill="currentColor" />
@@ -217,18 +268,17 @@ const YouTubePlayer = ({ className }: YouTubePlayerProps) => {
         ) : (
           <div ref={containerRef} className="w-full h-full"></div>
         )}
-      </div>
+      </span>
 
       {/* Info */}
-      <div className="w-[72%] p-5 flex flex-col justify-center bg-gradient-to-r from-green-900/[0.05] to-transparent">
+      <div className="w-[525px] p-5 flex flex-col justify-center bg-gradient-to-r from-green-900/[0.05] to-transparent">
         <div className="flex justify-between items-center mb-4">
 
           {/* 제목 애니메이션 영역 */}
           <div className="flex flex-col overflow-hidden mr-4 min-w-[320px] h-[40px] justify-center">
             <span className="text-[9px] text-green-500 font-mono font-bold uppercase tracking-[0.15em] mb-1 opacity-70">
-              System Online
+              Playing Now
             </span>
-
             <div className="relative h-[20px] overflow-hidden"> {/* 애니메이션이 일어날 박스 */}
               <AnimatePresence mode="wait">
                 <motion.h3
@@ -245,7 +295,42 @@ const YouTubePlayer = ({ className }: YouTubePlayerProps) => {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 relative">
+
+            {/* 볼륨 조절 드랍다운 슬라이더 */}
+            <AnimatePresence>
+              {isVolumeOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute bottom-full min-w-10 mb-4 -left-0.5 bg-[#1a1c1e] border border-white/10 p-3 rounded-2xl shadow-2xl z-[110] flex flex-col items-center gap-2"
+                >
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={volume}
+                    onChange={handleVolumeChange}
+                    className="h-24 w-1.5 appearance-none bg-white/10 rounded-full accent-green-500 cursor-pointer"
+                    style={{
+                      writingMode: 'vertical-lr', // 수직 방향 설정
+                      direction: 'rtl'            // 아래가 0, 위가 100이 되도록 방향 조절
+                    }}
+                  />
+                  <span className="text-[9px] font-mono text-white/40">{volume}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* 볼륨 버튼 */}
+            <button
+              onClick={() => setIsVolumeOpen(!isVolumeOpen)}
+              className={`p-2 rounded-xl transition-all ${isVolumeOpen ? 'bg-white/10 text-green-400' : 'text-white/30 hover:text-green-400 hover:bg-white/5'}`}
+            >
+              {getVolumeIcon()}
+            </button>
+
             <button onClick={handleAddToList} className="p-2 text-white/30 hover:text-green-400 hover:bg-white/5 rounded-xl transition-all">
               <Plus size={18} />
             </button>

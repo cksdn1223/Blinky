@@ -6,3 +6,27 @@
   height: 100vh;
   /* background-color: #FEF6E9; */
 }
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 197, 94, 0.5); /* 녹색 강조 */
+}
+
+@keyframes backgroundPulse {
+  0% { background-color: #87c587; }
+  50% { background-color: #76b376; } /* 살짝 짙어짐 */
+  100% { background-color: #87c587; }
+}
+
+.animate-bg-pulse {
+  animation: backgroundPulse 30s ease-in-out infinite;
+}
