@@ -10,7 +10,7 @@ declare global {
 }
 
 
-const YouTubePlayer = ({ className, onTick, setIsPlaying }: YouTubePlayerProps) => {
+const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayerProps) => {
   const [videoUrl, setVideoUrl] = useState("first");
   const playerRef = useRef<YT.Player | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -24,6 +24,7 @@ const YouTubePlayer = ({ className, onTick, setIsPlaying }: YouTubePlayerProps) 
   const isRepeatRef = useRef(isRepeat);
   const [volume, setVolume] = useState<number>(50); // 기본값 50
   const [isVolumeOpen, setIsVolumeOpen] = useState(false);
+  const volumeRef = useRef(volume);
 
   useEffect(() => {
     isRepeatRef.current = isRepeat;
@@ -31,6 +32,24 @@ const YouTubePlayer = ({ className, onTick, setIsPlaying }: YouTubePlayerProps) 
   useEffect(() => {
     playlistRef.current = playlist;
   }, [playlist]);
+  useEffect(() => {
+    volumeRef.current = volume;
+    if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+      playerRef.current.setVolume(volume);
+
+      // 음소거 해제 로직 포함
+      if (volume > 0 && playerRef.current.isMuted()) {
+        playerRef.current.unMute();
+      }
+    }
+  }, [volume]);
+
+  const onPlayerReady = (event: YT.PlayerEvent) => {
+    const videoData = event.target.getVideoData();
+    if (videoData && videoData.video_id) {
+      onVideoChange?.(videoData.video_id);
+    }
+  };
 
   const getYoutubeId = (url: string): string | null => {
     if (!url || url === "first") return null;
@@ -110,14 +129,6 @@ const YouTubePlayer = ({ className, onTick, setIsPlaying }: YouTubePlayerProps) 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseInt(e.target.value);
     setVolume(newVolume);
-
-    if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
-      playerRef.current.setVolume(newVolume);
-
-      if (newVolume > 0 && playerRef.current.isMuted()) {
-        playerRef.current.unMute();
-      }
-    }
   };
 
   const getVolumeIcon = () => {
@@ -171,8 +182,9 @@ const YouTubePlayer = ({ className, onTick, setIsPlaying }: YouTubePlayerProps) 
         events: {
           onReady: (e: YT.PlayerEvent) => {
             e.target.playVideo();
-            e.target.setVolume(volume);
+            e.target.setVolume(volumeRef.current);
             setDuration(e.target.getDuration() - 1); // 전체 길이 설정
+            onPlayerReady(e);
           },
           onStateChange: (e: YT.OnStateChangeEvent) => {
             // 재생 중일 때만 인터벌 가동
@@ -181,7 +193,6 @@ const YouTubePlayer = ({ className, onTick, setIsPlaying }: YouTubePlayerProps) 
               interval = setInterval(() => {
                 if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
                   setCurrentTime(playerRef.current.getCurrentTime());
-                  onTick?.();
                 }
               }, 1000);
             } else {
@@ -217,7 +228,7 @@ const YouTubePlayer = ({ className, onTick, setIsPlaying }: YouTubePlayerProps) 
       if (playerRef.current) playerRef.current.destroy();
       clearInterval(interval);
     };
-  }, [videoUrl, onTick, volume, setIsPlaying]);
+  }, [videoUrl, setIsPlaying, onPlayerReady]);
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 

@@ -2,10 +2,7 @@ package com.web.back.entity;
 
 import com.web.back.enums.UserRole;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import org.springframework.security.core.GrantedAuthority;
@@ -13,9 +10,11 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Entity
 @Getter
@@ -32,8 +31,8 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String nickname;
 
-    @Column(name = "total_focus_sec")
-    private Long totalFocusSec = 0L;
+    @Column(name = "total_focus_sec", nullable = false, columnDefinition = "bigint default 0")
+    private Long totalFocusSec;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -47,6 +46,22 @@ public class User implements UserDetails {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     private Pet pet;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private final List<FocusLog> focusLogs = new ArrayList<>();
+
+    @OneToMany(mappedBy = "follower", cascade = CascadeType.ALL)
+    private final List<Friend> followingList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "following", cascade = CascadeType.ALL)
+    private final List<Friend> followerList = new ArrayList<>();
+
+    @Builder
+    public User(String email, String nickname, UserRole role) {
+        this.email = email;
+        this.nickname = nickname;
+        this.role = (role != null) ? role : UserRole.USER;
+        this.totalFocusSec = 0L;
+    }
 
     // 편의 메서드
     public void setPet(Pet pet) {
@@ -57,11 +72,44 @@ public class User implements UserDetails {
         }
     }
 
-    @Builder
-    public User(String email, String nickname, UserRole role) {
-        this.email = email;
-        this.nickname = nickname;
-        this.role = role;
+    public void createDefaultPet(String randomNickname) {
+        Pet defaultPet = Pet.builder()
+                .name(randomNickname) // 초기 이름은 유저 닉네임과 동일하게 설정
+                .build();
+        this.setPet(defaultPet);
+    }
+
+    public void addFocusTime(long seconds) {
+        if (seconds > 0) {
+            this.totalFocusSec += seconds;
+        }
+    }
+
+    public void follow(User targetUser) {
+        Friend friend = Friend.builder()
+                .follower(this)    // 나
+                .following(targetUser) // 대상
+                .status("ACTIVE")
+                .build();
+
+        this.followingList.add(friend);
+        targetUser.getFollowerList().add(friend);
+    }
+
+    public List<User> getFollowings() {
+        return followingList.stream()
+                .map(Friend::getFollowing)
+                .collect(Collectors.toList());
+    }
+
+    public List<User> getFollowers() {
+        return followerList.stream()
+                .map(Friend::getFollower)
+                .collect(Collectors.toList());
+    }
+
+    public void updatePetStatus(int happiness, int boredom) {
+        this.pet.changeStatus(happiness, boredom);
     }
 
     // UserDetails

@@ -1,10 +1,7 @@
 package com.web.back.entity;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
 @Getter
@@ -24,8 +21,22 @@ public class Pet {
     private String name;
 
     @Column(nullable = false)
-    private Long happiness = 0L;
+    private int happiness;
 
     @Column(nullable = false)
-    private int boredom = 0;
+    private int boredom;
+
+    @Builder
+    public Pet(User user, String name) {
+        this.user = user;
+        this.name = name;
+        this.happiness = 0;
+        this.boredom = 0;
+    }
+
+    // 편의 메서드
+    public void changeStatus(int happiness, int boredom) {
+        this.happiness = happiness;
+        this.boredom = boredom;
+    }
 }

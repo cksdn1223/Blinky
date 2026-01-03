@@ -1,12 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { PetStatus } from '../types';
+import { useUserStore } from '../store/useAuthStore';
 
 export const useBlinkyLogic = () => {
+  const { userStats } = useUserStore();
   const [status, setStatus] = useState('sleep'); // 기본 상태는 수면
   const [stats, setStats] = useState<PetStatus>({
     happiness: 0,
     boredom: 0
   });
+
+  useEffect(() => {
+    if (userStats) {
+      setStats({
+        happiness: userStats.petHappiness,
+        boredom: userStats.petBoredom
+      });
+    }
+  }, [userStats]);
+
   // 연속 상호작용 횟수 관리 (3번 넘으면 pounce)
   const interactionCountRef = useRef(0);
   // 특정 행동을 강제 유지하는 타이머 (상호작용 시 3초 유지 등)
