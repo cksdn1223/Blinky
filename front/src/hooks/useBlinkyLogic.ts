@@ -4,7 +4,6 @@ import { PetStatus } from '../types';
 export const useBlinkyLogic = () => {
   const [status, setStatus] = useState('sleep'); // 기본 상태는 수면
   const [stats, setStats] = useState<PetStatus>({
-    xp: 0,
     happiness: 0,
     boredom: 0
   });

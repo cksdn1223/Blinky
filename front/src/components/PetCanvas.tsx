@@ -7,7 +7,7 @@ const ROW_MAP: Record<string, number> = {
 const img = new Image();
 img.src = catSpriteImg;
 
-const PetCanvas = ({ status, onPetClick, onAnimationEnd }: { status: string; onPetClick?: () => void; onAnimationEnd?: () => void }) => {
+const PetCanvas = ({ status, onPetClick, onAnimationEnd, petName }: { status: string; onPetClick?: () => void; onAnimationEnd?: () => void, petName: string }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const frameRef = useRef(0);
@@ -71,7 +71,7 @@ const PetCanvas = ({ status, onPetClick, onAnimationEnd }: { status: string; onP
       // 4. 고양이 위에 있고 마우스가 멈추면 0.6초 뒤에 툴팁 표시
       if (isOverCat) {
         hoverTimerRef.current = setTimeout(() => {
-          setHoveredUser("GUEST_USER");
+          setHoveredUser(petName);
         }, 600); // 0.6초 대기 시간
       }
     } catch (err) {
@@ -175,7 +175,6 @@ const PetCanvas = ({ status, onPetClick, onAnimationEnd }: { status: string; onP
           }}
         >
           <div className="bg-[#1a1c1e]/95 backdrop-blur-md text-white px-3 py-2 rounded-xl border border-white/10 shadow-2xl flex flex-col items-center">
-            <span className="text-[9px] font-mono text-green-400 font-black uppercase tracking-[0.2em] opacity-70">Pet Owner</span>
             <span className="text-[13px] font-mono font-bold tracking-tight">
               {hoveredUser}
             </span>

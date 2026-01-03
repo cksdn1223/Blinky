@@ -1,5 +1,4 @@
 export type PetStatus = {
-  xp: number;
   happiness: number;
   boredom: number;
 }
