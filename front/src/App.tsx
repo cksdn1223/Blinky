@@ -6,6 +6,7 @@ import { useBlinkyLogic } from "./hooks/useBlinkyLogic";
 import { Check, Settings, Users, X } from "lucide-react";
 import Equalizer from "./components/Equalizer";
 import { AnimatePresence, motion } from "framer-motion";
+import { button } from "framer-motion/client";
 
 const PETNAME_SIZE = 10;
 
