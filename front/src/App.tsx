@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Clock from "./components/Clock";
 import PetCanvas from "./components/PetCanvas";
 import YouTubePlayer from "./components/YoutubePlayer";
@@ -6,8 +6,10 @@ import { useBlinkyLogic } from "./hooks/useBlinkyLogic";
 import { Check, Settings, Users, X } from "lucide-react";
 import Equalizer from "./components/Equalizer";
 import { AnimatePresence, motion } from "framer-motion";
-import { button } from "framer-motion/client";
+import { sendEnd } from "./api/api";
+import { useAuthStore, useUserStore } from "./store/useAuthStore";
 
+const GOOGLE_LOGIN_URL = `${import.meta.env.VITE_BASE_URL}/oauth2/authorization/google`;
 const PETNAME_SIZE = 10;
 
 const getStatusStyles = (boredom: number) => {
@@ -21,34 +23,95 @@ const getStatusStyles = (boredom: number) => {
   return { border: 'border-green-500/30', shadow: 'shadow-[0_0_15px_rgba(34,197,94,0.1)]', text: 'text-green-400' };
 };
 
+const formatTimer = (seconds: number) => {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+
+  // 시간이 0이면 '00:00' 형태로, 있으면 '90:02:12' 형태로
+  const displayH = h > 0 ? `${h}:` : '';
+  const displayM = m < 10 && h > 0 ? `0${m}` : m;
+  const displayS = s < 10 ? `0${s}` : s;
+
+  return `${displayH}${displayM}:${displayS}`;
+};
+
+const getKSTNow = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  const kstDate = new Date(now.getTime() - offset);
+  return kstDate.toISOString().split('.')[0]; // 밀리초 제외
+};
+
 function App() {
+  const { token, setToken, logout } = useAuthStore();
+  const { userStats, fetchStats, updateAfterSession } = useUserStore();
   const { status, stats, interact, setStatus } = useBlinkyLogic();
   const [isPlaying, setIsPlaying] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
-  const [totalTime, setTotalTime] = useState(0); // 실제로는 로컬스토리지 등에서 불러와야 함
-
+  const [startTime, setStartTime] = useState<string | null>(null); // 시작 시간 저장
+  const [currentVideoIds, setCurrentVideoIds] = useState<string[]>([]); // 현재 세션 영상들
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [petName, setPetName] = useState("Blinky");
+  const petName = userStats?.petNickname || "Blinky";
   const [tempName, setTempName] = useState(petName);
-
-  const formatTimer = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${h > 0 ? h + ':' : ''}${m < 10 && h > 0 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
-  };
-
   const styles = getStatusStyles(stats.boredom);
 
-  // 접속시간 측정
   useEffect(() => {
-    const timer = setInterval(() => {
-      setSessionTime(prev => prev + 1);
-      setTotalTime(prev => prev + 1);
-    }, 1000);
+    const params = new URLSearchParams(window.location.search);
+    const tokenFromUrl = params.get('token');
 
-    return () => clearInterval(timer); // 언마운트 시 클리어
-  }, []);
+    if (tokenFromUrl) {
+      setToken(tokenFromUrl);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      fetchStats();
+    } else if (token) {
+      fetchStats();
+    }
+  }, [token, setToken, fetchStats]);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (token) {
+      if (!startTime) setStartTime(getKSTNow());
+      interval = setInterval(() => {
+        setSessionTime(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [token, startTime]);
+
+  const endSession = useCallback(async () => {
+    if (!startTime || sessionTime < 5) {
+      console.log("세션이 너무 짧아 저장하지 않습니다.");
+      setStartTime(getKSTNow()); // 다시 시작 시간만 갱신
+      setSessionTime(0);
+      return;
+    }
+    try {
+      const data = await sendEnd(startTime, currentVideoIds, stats.happiness, stats.boredom);
+      if (data && data.totalFocusTime !== undefined) {
+        updateAfterSession(
+          data.totalFocusTime,
+          stats.happiness,
+          stats.boredom
+        )
+      }
+      // 성공 시 초기화
+      setStartTime(getKSTNow());
+      setSessionTime(0);
+      setCurrentVideoIds([]);
+    } catch (error) {
+      console.error("세션 저장 실패:", error);
+    }
+  }, [currentVideoIds, startTime, sessionTime, stats.happiness, stats.boredom, updateAfterSession]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (startTime) endSession();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [startTime, endSession]);
 
   // 설정창이 열릴 때마다 진짜 이름을 임시 이름에 복사
   useEffect(() => {
@@ -58,8 +121,19 @@ function App() {
   }, [isSettingsOpen, petName]);
 
   return (
-    <div>
+    <>
       <div className="flex flex-col items-center justify-center min-h-screen animate-bg-pulse transition-all duration-700 p-4 relative">
+        <div className="absolute top-4 right-4">
+          {!token ? (
+            <a href={GOOGLE_LOGIN_URL} className="px-4 py-2 bg-white text-black rounded-full font-bold text-sm shadow-lg">
+              Google Login
+            </a>
+          ) : (
+            <button onClick={logout} className="px-4 py-2 bg-black/10 text-black/50 rounded-full text-sm">
+              Logout
+            </button>
+          )}
+        </div>
 
         <div className="w-full max-w-[700px] mb-6 px-2 flex justify-between items-end border-b-2 border-black/10 pb-4">
           <div className="flex flex-col">
@@ -79,7 +153,7 @@ function App() {
               Total Accumulation
             </span>
             <p className="text-xl font-mono font-black text-black/60 tabular-nums">
-              {formatTimer(totalTime)}
+              {formatTimer(userStats?.totalFocusTime || 0)}
             </p>
           </div>
         </div>
@@ -87,6 +161,9 @@ function App() {
         <YouTubePlayer
           className="w-full max-w-[700px] h-[100px] rounded-3xl mb-4"
           setIsPlaying={setIsPlaying}
+          onVideoChange={(videoId) => {
+            setCurrentVideoIds(prev => prev.includes(videoId) ? prev : [...prev, videoId]);
+          }}
         />
 
         <div className="w-full max-w-[700px] p-8 bg-gradient-to-br from-[#557a55]/90 to-[#4a6b4a]/80 rounded-[2.5rem] backdrop-blur-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] relative">
@@ -95,7 +172,7 @@ function App() {
             {/* 왼쪽 상단 상태 칩 */}
             <div className={`absolute top-0 left-0 px-4 py-2.5 bg-[#1a1c1e] rounded-full border transition-all duration-700 ${styles.border} ${styles.shadow}`}>
               <p className="text-[12px] font-black font-mono tracking-[0.1em] text-white">
-                <span className={styles.text}>심심해:</span> {Math.floor(stats.boredom)}%
+                <span className={styles.text}>심심해:</span>{Math.floor(stats.boredom)}%
               </p>
             </div>
 
@@ -169,7 +246,8 @@ function App() {
                               }}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' && tempName.length > 0) {
-                                  setPetName(tempName); // 엔터 누를 때만 실제 이름 반영
+                                  // TODO: handlePetname 으로 변경해야함
+                                  // setPetName(tempName); // 엔터 누를 때만 실제 이름 반영
                                   setIsSettingsOpen(false);
                                 }
                               }}
@@ -183,7 +261,8 @@ function App() {
                           <button
                             disabled={tempName.length === 0}
                             onClick={() => {
-                              setPetName(tempName); // 버튼 클릭 시에만 실제 이름 반영
+                              // TODO: handlePetname으로 변경해야함
+                              // setPetName(tempName); // 버튼 클릭 시에만 실제 이름 반영
                               setIsSettingsOpen(false);
                             }}
                             // disabled 상태일 때 transform(scale)과 hover 효과를 완전히 제거
@@ -218,7 +297,7 @@ function App() {
 
         <Clock />
       </div>
-    </div>
+    </>
   );
 }
 
