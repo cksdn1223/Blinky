@@ -6,7 +6,7 @@ import { useBlinkyLogic } from "./hooks/useBlinkyLogic";
 import { Check, Settings, Users, X } from "lucide-react";
 import Equalizer from "./components/Equalizer";
 import { AnimatePresence, motion } from "framer-motion";
-import { sendEnd } from "./api/api";
+import { changePetNickname, sendEnd } from "./api/api";
 import { useAuthStore, useUserStore } from "./store/useAuthStore";
 
 const GOOGLE_LOGIN_URL = `${import.meta.env.VITE_BASE_URL}/oauth2/authorization/google`;
@@ -120,6 +120,15 @@ function App() {
     }
   }, [isSettingsOpen, petName]);
 
+  const handlePetNickname = async (nickname: string) => {
+    await changePetNickname(nickname);
+    // 서버 호출하지말고 저장된정보에서 닉네임만 교체
+    useUserStore.setState((state) => ({
+      userStats: state.userStats ? { ...state.userStats, petNickname: nickname } : null
+    }));
+    setIsSettingsOpen(false);
+  }
+
   return (
     <>
       <div className="flex flex-col items-center justify-center min-h-screen animate-bg-pulse transition-all duration-700 p-4 relative">
@@ -172,7 +181,9 @@ function App() {
             {/* 왼쪽 상단 상태 칩 */}
             <div className={`absolute top-0 left-0 px-4 py-2.5 bg-[#1a1c1e] rounded-full border transition-all duration-700 ${styles.border} ${styles.shadow}`}>
               <p className="text-[12px] font-black font-mono tracking-[0.1em] text-white">
-                <span className={styles.text}>심심해:</span>{Math.floor(stats.boredom)}%
+                <span className={styles.text}>심심해:</span>
+                {/* stats.boredom이 유효한 숫자인지 확인 */}
+                {isNaN(stats.boredom) ? 0 : Math.floor(stats.boredom)}%
               </p>
             </div>
 
@@ -239,16 +250,14 @@ function App() {
                               value={tempName} // 실제 이름이 아닌 임시 이름 연결
                               onChange={(e) => {
                                 const value = e.target.value;
-                                const regex = /^[ㄱ-ㅎ|가-힣|a-z|A-Z|0-9]*$/;
+                                const regex = /^[ㄱ-ㅎ|가-힣|a-z|A-Z|0-9|_]*$/;
                                 if (regex.test(value) && value.length <= PETNAME_SIZE) {
                                   setTempName(value); // 임시 상태만 변경
                                 }
                               }}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' && tempName.length > 0) {
-                                  // TODO: handlePetname 으로 변경해야함
-                                  // setPetName(tempName); // 엔터 누를 때만 실제 이름 반영
-                                  setIsSettingsOpen(false);
+                                  handlePetNickname(tempName);
                                 }
                               }}
                               placeholder="공백없이 입력"
@@ -261,11 +270,8 @@ function App() {
                           <button
                             disabled={tempName.length === 0}
                             onClick={() => {
-                              // TODO: handlePetname으로 변경해야함
-                              // setPetName(tempName); // 버튼 클릭 시에만 실제 이름 반영
-                              setIsSettingsOpen(false);
+                              handlePetNickname(tempName);
                             }}
-                            // disabled 상태일 때 transform(scale)과 hover 효과를 완전히 제거
                             className="mb-1 p-2.5 bg-green-500 text-[#1a1c1e] rounded-xl transition-all flex items-center justify-center shadow-[0_0_15px_rgba(34,197,94,0.3)]
                             enabled:hover:bg-green-400 enabled:hover:scale-105 enabled:active:scale-95
                             disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none"
@@ -289,13 +295,21 @@ function App() {
           </div>
         </div>
 
-        <footer className="mt-10 opacity-30 flex items-center gap-4">
-          <div className="h-[1px] w-12 bg-black"></div>
-          <p className="text-[10px] font-bold tracking-[0.3em] text-black uppercase">Blinky v1.0</p>
-          <div className="h-[1px] w-12 bg-black"></div>
+        <footer className="flex-coll justify-center">
+          <div className="mt-10 opacity-30 flex items-center gap-4">
+            <div className="h-[1px] w-12 bg-black"></div>
+            <p className="text-[10px] font-bold tracking-[0.3em] text-black uppercase">Blinky v1.0</p>
+            <div className="h-[1px] w-12 bg-black"></div>
+          </div>
+          <div className="flex justify-center">
+            <Clock />
+          </div>
+          {!token &&
+            <div className="flex justify-center text-[12px] mt-2 text-black/40 font-bold">
+              시간을 저장하시려면 로그인해주세요.
+            </div>}
         </footer>
 
-        <Clock />
       </div>
     </>
   );
