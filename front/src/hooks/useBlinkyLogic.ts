@@ -13,8 +13,9 @@ export const useBlinkyLogic = () => {
   useEffect(() => {
     if (userStats) {
       setStats({
-        happiness: userStats.petHappiness,
-        boredom: userStats.petBoredom
+        // 만약 petHappiness가 없으면 0을 사용하도록 명시
+        happiness: Number(userStats.petHappiness) || 0,
+        boredom: Number(userStats.petBoredom) || 0
       });
     }
   }, [userStats]);

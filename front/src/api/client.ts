@@ -34,10 +34,10 @@ api.interceptors.response.use(
 
     // 401 에러 발생 시 자동 로그아웃 처리
     if (status === 401 && !config?.skipAuthLogout) {
+      alert("세션이 만료되었습니다. 다시 로그인해주세요.");
       useAuthStore.getState().logout(); // 스토어의 logout 함수 호출
-      
       // 필요한 경우 로그인 페이지로 이동 시키는 로직 추가 가능
-      // window.location.href = '/login'; 
+      // window.location.href = '/'; 
     }
     return Promise.reject(error);
   }

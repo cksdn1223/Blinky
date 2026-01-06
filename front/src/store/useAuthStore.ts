@@ -8,7 +8,11 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       token: null,
       setToken: (token) => set({ token }),
-      logout: () => set({ token: null }),
+      logout: () => {
+        set({ token: null });
+        // 유저 정보 초기화
+        useUserStore.setState({ userStats: null });
+      },
     }),
     { name: 'auth-storage' } // localStorage에 자동 저장
   )

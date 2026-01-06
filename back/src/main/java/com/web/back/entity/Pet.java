@@ -39,4 +39,8 @@ public class Pet {
         this.happiness = happiness;
         this.boredom = boredom;
     }
+
+    public void changeNickname(String nickname) {
+        this.name = nickname;
+    }
 }

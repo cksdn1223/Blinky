@@ -14,3 +14,11 @@ export const getUserStats = async () => {
   const response = await api.get("/api/user/stats");
   return response.data;
 }
+
+export const changePetNickname = async (nickname: string) => {
+  await api.put("/api/pet/nickname", null, {
+    params: {
+      nickname: nickname
+    }
+  })
+}
