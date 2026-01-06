@@ -90,7 +90,12 @@ export const useBlinkyLogic = () => {
     interactionCountRef.current += 1;
 
     // 3번 연속 클릭했거나 심심함 수치가 30 이하일 때
-    if (interactionCountRef.current >= 3 || stats.boredom <= 30) {
+    if (stats.boredom <= 30) {
+      setStatus('pounce');
+      interactionCountRef.current = 0; // 카운트 초기화
+      return;
+    }
+    else if (interactionCountRef.current >= 3) {
       setStatus('pounce');
       interactionCountRef.current = 0; // 카운트 초기화
       handleStatsUpdate();
