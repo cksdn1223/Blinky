@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { PetStatus } from '../types';
-import { useUserStore } from '../store/useAuthStore';
+import { useAuthStore, useUserStore } from '../store/store';
+import { interactPet } from '../api/api';
 
 export const useBlinkyLogic = () => {
   const { userStats } = useUserStore();
+  const { token } = useAuthStore();
   const [status, setStatus] = useState('sleep'); // 기본 상태는 수면
   const [stats, setStats] = useState<PetStatus>({
     happiness: 0,
@@ -12,31 +14,34 @@ export const useBlinkyLogic = () => {
 
   useEffect(() => {
     if (userStats) {
+      console.log("서버에서 불러온 데이터 확인:", userStats);
       setStats({
-        // 만약 petHappiness가 없으면 0을 사용하도록 명시
-        happiness: Number(userStats.petHappiness) || 0,
-        boredom: Number(userStats.petBoredom) || 0
+        // Number() 변환 시 undefined나 null이면 0이 될 수 있으므로 기본값 처리
+        happiness: Number(userStats.petHappiness || 0),
+        boredom: Number(userStats.petBoredom || 0)
       });
     }
   }, [userStats]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const timer = setInterval(() => {
+      setStats(prev => ({
+        ...prev,
+        boredom: Math.min(prev.boredom + 1, 100)
+      }));
+    }, 38000);
+
+    return () => clearInterval(timer);
+  }, [token]);
 
   // 연속 상호작용 횟수 관리 (3번 넘으면 pounce)
   const interactionCountRef = useRef(0);
   // 특정 행동을 강제 유지하는 타이머 (상호작용 시 3초 유지 등)
   const actionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 1. 수치 자동 증가 (10초마다)
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setStats(prev => ({
-        ...prev,
-        boredom: Math.min(prev.boredom + 0.28, 100)
-      }));
-    }, 10000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // 2. 자아(AI) 및 상태 결정 로직
+  // 자아(AI) 및 상태 결정 로직
   useEffect(() => {
     // 상호작용 중이거나 특수 동작 중일 때는 자아 로직이 개입하지 않음
     if (actionTimeoutRef.current || ['pounce'].includes(status)) return;
@@ -68,14 +73,12 @@ export const useBlinkyLogic = () => {
   }, [stats, status]);
 
   // 3. 상호작용 로직 (핵심)     
-  const interact = useCallback(() => {
-    if (actionTimeoutRef.current) return;
-    // pounce 애니메이션 중에도 클릭 방지
-    if (status === 'pounce') return;
+  const interact = useCallback(async () => {
+    if (actionTimeoutRef.current || status === 'pounce') return;
 
     interactionCountRef.current += 1;
 
-    // 3번 연속 클릭 시 pounce 발생
+    // 3번 연속 클릭 시 pounce 발생 stats.boredom 이 30 이하면 무조건 pounce 하고 카운트초기화 후 return
     if (interactionCountRef.current >= 3) {
       setStatus('pounce');
       interactionCountRef.current = 0; // 카운트 초기화
@@ -94,14 +97,25 @@ export const useBlinkyLogic = () => {
         setStatus('idle');
       }, 3000);
     }
-
-    // 경험치 및 심심함 해소
     setStats(prev => ({
       ...prev,
       boredom: Math.max(prev.boredom - 30, 0),
       happiness: Math.max(prev.happiness + 1, 0),
     }));
-  }, [status]);
+
+    if (token) {
+      // 서버로 심심함 감소 보내기
+      try {
+        const data = await interactPet();
+        if (data) {
+          setStats({
+            happiness: data.happiness,
+            boredom: data.boredom
+          });
+        }
+      } catch (e) {/**/ }
+    }
+  }, [status, token]);
 
   return { status, stats, interact, setStatus };
 };

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Play, ListMusic, Trash2, X, Plus, Repeat1, Repeat, VolumeX, Volume1, Volume2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Play, ListMusic, Trash2, X, Repeat1, Repeat, VolumeX, Volume1, Volume2, SkipForward } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { YouTubePlayerProps, PlaylistItem } from '../types';
 
@@ -22,9 +22,18 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
   const [isListOpen, setIsListOpen] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
   const isRepeatRef = useRef(isRepeat);
-  const [volume, setVolume] = useState<number>(50); // 기본값 50
+  const [volume, setVolume] = useState<number>(
+    localStorage.getItem('volume') ? Number(localStorage.getItem('volume')) : 50); // 기본값 50
   const [isVolumeOpen, setIsVolumeOpen] = useState(false);
   const volumeRef = useRef(volume);
+
+  const onPlayerReady = (event: YT.PlayerEvent) => {
+    const videoData = event.target.getVideoData();
+    if (videoData && videoData.video_id) {
+      onVideoChange?.(videoData.video_id);
+    }
+  };
+  const onPlayerReadyRef = useRef(onPlayerReady);
 
   useEffect(() => {
     isRepeatRef.current = isRepeat;
@@ -44,12 +53,6 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
     }
   }, [volume]);
 
-  const onPlayerReady = (event: YT.PlayerEvent) => {
-    const videoData = event.target.getVideoData();
-    if (videoData && videoData.video_id) {
-      onVideoChange?.(videoData.video_id);
-    }
-  };
 
   const getYoutubeId = (url: string): string | null => {
     if (!url || url === "first") return null;
@@ -126,15 +129,17 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
     }
   }
 
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseInt(e.target.value);
+  const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = Number(e.target.value);
     setVolume(newVolume);
-  };
+    localStorage.setItem('volume', newVolume.toString());
+    playerRef.current?.setVolume(newVolume);
+  }, []);
 
   const getVolumeIcon = () => {
-    if (volume === 0) return <VolumeX size={18} />;
-    if (volume < 50) return <Volume1 size={18} />;
-    return <Volume2 size={18} />;
+    if (volume === 0) return <VolumeX onClick={() => setVolume(0)} size={18} />;
+    if (volume < 50) return <Volume1 onClick={() => setVolume(0)} size={18} />;
+    return <Volume2 onClick={() => setVolume(0)} size={18} />;
   };
 
   useEffect(() => {
@@ -184,7 +189,7 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
             e.target.playVideo();
             e.target.setVolume(volumeRef.current);
             setDuration(e.target.getDuration() - 1); // 전체 길이 설정
-            onPlayerReady(e);
+            onPlayerReadyRef.current(e);
           },
           onStateChange: (e: YT.OnStateChangeEvent) => {
             // 재생 중일 때만 인터벌 가동
@@ -228,7 +233,7 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
       if (playerRef.current) playerRef.current.destroy();
       clearInterval(interval);
     };
-  }, [videoUrl, setIsPlaying, onPlayerReady]);
+  }, [videoUrl, setIsPlaying]);
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -307,43 +312,47 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0 relative">
-
-            {/* 볼륨 조절 드랍다운 슬라이더 */}
-            <AnimatePresence>
-              {isVolumeOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="absolute bottom-full min-w-10 mb-4 -left-0.5 bg-[#1a1c1e] border border-white/10 p-3 rounded-2xl shadow-2xl z-[110] flex flex-col items-center gap-2"
-                >
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={volume}
-                    onChange={handleVolumeChange}
-                    className="h-24 w-1.5 appearance-none bg-white/10 rounded-full accent-green-500 cursor-pointer"
-                    style={{
-                      writingMode: 'vertical-lr', // 수직 방향 설정
-                      direction: 'rtl'            // 아래가 0, 위가 100이 되도록 방향 조절
-                    }}
-                  />
-                  <span className="text-[9px] font-mono text-white/40">{volume}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             {/* 볼륨 버튼 */}
-            <button
-              onClick={() => setIsVolumeOpen(!isVolumeOpen)}
-              className={`p-2 rounded-xl transition-all ${isVolumeOpen ? 'bg-white/10 text-green-400' : 'text-white/30 hover:text-green-400 hover:bg-white/5'}`}
+            <div
+              onMouseEnter={() => setIsVolumeOpen(true)}
+              onMouseLeave={() => setIsVolumeOpen(false)}
             >
-              {getVolumeIcon()}
-            </button>
+              <AnimatePresence>
+                {isVolumeOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute bottom-full -left-0.5 pb-4 z-[110]"
+                  >
+                    <div className="min-w-10 bg-[#1a1c1e] border border-white/10 p-3 rounded-2xl shadow-2xl flex flex-col items-center gap-2">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={volume}
+                        onChange={handleVolumeChange}
+                        className="h-24 w-1.5 appearance-none bg-white/10 rounded-full accent-green-500 cursor-pointer"
+                        style={{
+                          writingMode: 'vertical-lr', // 수직 방향 설정
+                          direction: 'rtl'            // 아래가 0, 위가 100이 되도록 방향 조절
+                        }}
+                      />
+                      <span className="text-[9px] font-mono text-white/40">{volume}</span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <button
+                className={`p-2 rounded-xl transition-all ${isVolumeOpen ? 'bg-white/10 text-green-400' : 'text-white/30 hover:text-green-400 hover:bg-white/5'}`}
+              >
+                {getVolumeIcon()}
+              </button>
+            </div>
+
 
             <button onClick={handleAddToList} className="p-2 text-white/30 hover:text-green-400 hover:bg-white/5 rounded-xl transition-all">
-              <Plus size={18} />
+              <SkipForward size={18} />
             </button>
             <button onClick={handlePasteAndPlay} className="p-2 text-white/30 hover:text-red-500 hover:bg-white/5 rounded-xl transition-all">
               <Play size={18} fill={videoUrl !== "first" ? "currentColor" : "none"} />

@@ -12,8 +12,8 @@ public record UserResponseDto(
         UserRole role,
         LocalDateTime createdAt,
         String petNickname,
-        int petHappiness,
-        int boredom
+        double petHappiness,
+        double petBoredom
 ) {
     public static UserResponseDto from(User user) {
         return new UserResponseDto(
@@ -24,7 +24,7 @@ public record UserResponseDto(
                 user.getCreatedAt(),
                 user.getPet().getName(),
                 user.getPet().getHappiness(),
-                user.getPet().getBoredom()
+                user.getPet().getCalculatedBoredom()
         );
     }
 }
