@@ -1,5 +1,6 @@
 package com.web.back.controller.pet;
 
+import com.web.back.dto.pet.PetStatusResponseDto;
 import com.web.back.service.pet.PetService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,5 +21,12 @@ public class PetController {
             ) {
         petService.changePetNickname(nickname, principal);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/interact")
+    public ResponseEntity<PetStatusResponseDto> interactWithPet(
+            Principal principal
+    ) {
+        return ResponseEntity.ok(petService.interactWithPet(principal));
     }
 }

@@ -1,14 +1,28 @@
 import api from "./client";
 
-export const sendEnd = async (startTime: string, videoIds: string[], petHappiness: number, petBoredom: number) => {
-  const response = await api.post('/api/focus/end', {
-    startAt: startTime,
-    videoIds: videoIds,
-    petHappiness: petHappiness,
-    petBoredom: petBoredom
+export const sendEnd = async (
+  startTime: string,
+  videoIds: string[],
+  happiness: number,
+  boredom: number,
+  token: string | null,
+) => {
+  const response = await fetch(`${import.meta.env.VITE_BASE_URL}/api/focus/end`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      startAt: startTime,
+      videoIds,
+      petHappiness: happiness,
+      petBoredom: boredom
+    }),
+    keepalive: true
   });
-  return response.data;
-}
+  return response.json();
+};
 
 export const getUserStats = async () => {
   const response = await api.get("/api/user/stats");
@@ -21,4 +35,9 @@ export const changePetNickname = async (nickname: string) => {
       nickname: nickname
     }
   })
+}
+
+export const interactPet = async () => {
+  const response = await api.post('/api/pet/interact');
+  return response.data;
 }

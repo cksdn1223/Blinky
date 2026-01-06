@@ -47,7 +47,7 @@ public class User implements UserDetails {
     private Pet pet;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private final List<FocusLog> focusLogs = new ArrayList<>();
+    private final List<FocusLog> focusLog = new ArrayList<>();
 
     @OneToMany(mappedBy = "follower", cascade = CascadeType.ALL)
     private final List<Friend> followingList = new ArrayList<>();
@@ -85,6 +85,7 @@ public class User implements UserDetails {
         }
     }
 
+
     public void follow(User targetUser) {
         Friend friend = Friend.builder()
                 .follower(this)    // 나
@@ -108,7 +109,7 @@ public class User implements UserDetails {
                 .collect(Collectors.toList());
     }
 
-    public void updatePetStatus(int happiness, int boredom) {
+    public void updatePetStatus(double happiness, double boredom) {
         this.pet.changeStatus(happiness, boredom);
     }
 
