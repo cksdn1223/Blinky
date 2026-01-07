@@ -64,6 +64,13 @@ public class User implements UserDetails {
     }
 
     // 편의 메서드
+    public void changeNickname(String nickname) {
+        if (nickname == null || nickname.isBlank()) {
+            throw new IllegalArgumentException("닉네임은 비거나 null 일 수 없습니다.");
+        }
+        this.nickname = nickname;
+    }
+
     public void setPet(Pet pet) {
         this.pet = pet;
         // Pet 엔티티가 아직 이 유저를 모르고 있다면 설정해줌

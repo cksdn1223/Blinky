@@ -37,10 +37,10 @@ export const useBlinkyLogic = () => {
 
   // 연속 상호작용 횟수 관리 (3번 넘으면 pounce)
   const interactionCountRef = useRef(0);
-  // 특정 행동을 강제 유지하는 타이머 (상호작용 시 3초 유지 등)
+  // 특정 행동을 강제 유지하는 타이머
   const actionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 자아(AI) 및 상태 결정 로직
+  // 상태 결정 로직
   useEffect(() => {
     // 상호작용 중이거나 특수 동작 중일 때는 자아 로직이 개입하지 않음
     if (actionTimeoutRef.current || ['pounce'].includes(status)) return;
@@ -83,7 +83,7 @@ export const useBlinkyLogic = () => {
     return () => clearInterval(decisionTimer);
   }, [stats, status]);
 
-  // 3. 상호작용 로직 (핵심)     
+  // 상호작용 로직   
   const interact = useCallback(async () => {
     if (actionTimeoutRef.current || status === 'pounce') return;
 

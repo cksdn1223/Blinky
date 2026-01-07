@@ -41,3 +41,11 @@ export const interactPet = async () => {
   const response = await api.post('/api/pet/interact');
   return response.data;
 }
+
+export const changeUserNickname = async (nickname: string) => {
+  await api.put('/api/user/nickname', null, {
+    params: {
+      nickname: nickname
+    }
+  })
+}

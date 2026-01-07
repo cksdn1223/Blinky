@@ -44,13 +44,14 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler{
         // 2. 유저 조회 또는 생성 (랜덤 닉네임 포함)
         User user = userRepository.findByEmail(email)
                 .orElseGet(() -> {
-                    String randomNickname = "K_" + generateRandomDigits(6);
-                    User newUser = User.builder() // User 엔티티에 @Builder가 있다고 가정하거나 생성자 사용
+                    String googleName = (String) attrs.get("name"); // 구글 실제 이름
+                    String randomPetName = "P_" + generateRandomDigits(6); // 펫용 랜덤 이름
+                    User newUser = User.builder()
                             .email(email)
-                            .nickname(randomNickname)
+                            .nickname(googleName != null ? googleName : "Dev_" + generateRandomDigits(4))
                             .role(UserRole.USER)
                             .build();
-                    newUser.createDefaultPet(randomNickname);
+                    newUser.createDefaultPet(randomPetName);
                     return newUser;
                 });
 

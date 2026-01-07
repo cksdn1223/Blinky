@@ -5,9 +5,10 @@ import YouTubePlayer from "./components/YoutubePlayer";
 import { useBlinkyLogic } from "./hooks/useBlinkyLogic";
 import { Settings, Users } from "lucide-react";
 import Equalizer from "./components/Equalizer";
-import { changePetNickname, sendEnd } from "./api/api";
+import { changePetNickname, changeUserNickname, sendEnd } from "./api/api";
 import { useAuthStore, useUserStore } from "./store/store";
 import SettingPanel from "./components/SettingPanel";
+import SocialPanel from "./components/SocialPanel";
 
 function App() {
   const { token, setToken, logout } = useAuthStore();
@@ -18,8 +19,7 @@ function App() {
   const [startTime, setStartTime] = useState<string | null>(null); // 시작 시간 저장
   const [currentVideoIds, setCurrentVideoIds] = useState<string[]>([]); // 현재 세션 영상들
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const petName = userStats?.petNickname || "Blinky";
-  const [tempName, setTempName] = useState(petName);
+  const [isSocialOpen, setIsSocialOpen] = useState(false);
   const styles = getStatusStyles(stats.boredom);
   const isendingRef = useRef(false);
 
@@ -106,25 +106,25 @@ function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [startTime, sessionTime, endSession]);
 
-  // 설정창이 열릴 때마다 진짜 이름을 임시 이름에 복사
-  useEffect(() => {
-    if (isSettingsOpen) {
-      setTempName(petName);
-    }
-  }, [isSettingsOpen, petName]);
 
+  const handleUserNickname = async (nickname: string) => {
+    await changeUserNickname(nickname);
+    useUserStore.setState((state) => ({
+      userStats: state.userStats ? { ...state.userStats, nickname: nickname } : null
+    }));
+  }
   const handlePetNickname = async (nickname: string) => {
     await changePetNickname(nickname);
     // 서버 호출하지말고 저장된정보에서 닉네임만 교체
     useUserStore.setState((state) => ({
       userStats: state.userStats ? { ...state.userStats, petNickname: nickname } : null
     }));
-    setIsSettingsOpen(false);
   }
 
   return (
     <>
       <div className="flex flex-col items-center justify-center min-h-screen animate-bg-pulse transition-all duration-700 p-4 relative">
+        {/* 로그인 버튼 */}
         <div className="absolute top-4 right-4">
           {!token ? (
             <a href={GOOGLE_LOGIN_URL} className="px-4 py-2 bg-white text-black rounded-full font-bold text-sm shadow-lg">
@@ -136,7 +136,7 @@ function App() {
             </button>
           )}
         </div>
-
+        {/* 집중시간 / 이퀄라이저 */}
         <div className="w-full max-w-[700px] mb-6 px-2 flex justify-between items-end border-b-2 border-black/10 pb-4">
           <div className="flex flex-col">
             <span className="text-[11px] font-mono font-black text-black/40 uppercase tracking-[0.2em] mb-1">
@@ -168,6 +168,7 @@ function App() {
           }}
         />
 
+        {/* 캔바스 구역 */}
         <div className="w-full max-w-[700px] p-8 bg-gradient-to-br from-[#557a55]/90 to-[#4a6b4a]/80 rounded-[2.5rem] backdrop-blur-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] relative">
 
           <div className="flex flex-col items-center relative z-10 pt-14">
@@ -182,9 +183,19 @@ function App() {
 
             {/* 오른쪽 상단 버튼 그룹 및 설정 패널 앵커 */}
             <div className="absolute top-0 right-0 flex items-center gap-2.5 h-10">
-              <button className="px-4 py-2.5 bg-[#1a1c1e] rounded-full border border-white/10 shadow-xl hover:bg-[#2a2d31] hover:border-green-500/50 hover:shadow-[0_0_15px_rgba(34,197,94,0.2)] transition-all duration-200 active:scale-95 group/btn text-white/50">
-                <Users size={18} />
-              </button>
+              <div className="relative">
+                <button
+                  className={`px-4 py-2.5 bg-[#1a1c1e] rounded-full border border-white/10 shadow-xl 
+                    hover:bg-[#2a2d31] hover:border-green-500/50 hover:shadow-[0_0_15px_rgba(34,197,94,0.2)] transition-all duration-200 active:scale-95 group/btn
+                  ${isSocialOpen ? "border-green-500/50 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.2)]" : "text-white/50"}`}
+                  onClick={() => setIsSocialOpen(prev => !prev)}
+                >
+                  <Users size={18} />
+                </button>
+                <SocialPanel
+                  isSocialOpen={isSocialOpen}
+                />
+              </div>
 
               {/* 설정 버튼과 패널을 감싸는 Relative 컨테이너 */}
               <div className="relative">
@@ -199,12 +210,12 @@ function App() {
 
                 {/* 설정 패널 */}
                 <SettingPanel
-                  setTempName={setTempName}
+                  userName={userStats?.nickname || "GUEST"}
+                  handleUserNickname={handleUserNickname}
+                  petName={userStats?.petNickname || "BLINKY"}
                   handlePetNickname={handlePetNickname}
                   setIsSettingsOpen={setIsSettingsOpen}
                   isSettingsOpen={isSettingsOpen}
-                  petName={petName}
-                  tempName={tempName}
                 />
               </div>
             </div>
@@ -213,7 +224,7 @@ function App() {
               status={status}
               onPetClick={interact}
               onAnimationEnd={() => setStatus('sleep')}
-              petName={petName}
+              petName={userStats?.petNickname || "BLINKY"}
             />
           </div>
         </div>
