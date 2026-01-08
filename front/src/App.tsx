@@ -132,7 +132,7 @@ function App() {
             </a>
           ) : (
             <button onClick={logout} className="px-4 py-2 bg-black/10 text-black/50 rounded-full text-sm">
-              Logout
+              {userStats?.nickname} | Logout
             </button>
           )}
         </div>
@@ -194,6 +194,7 @@ function App() {
                 </button>
                 <SocialPanel
                   isSocialOpen={isSocialOpen}
+                  setIsSocialOpen={setIsSocialOpen}
                 />
               </div>
 
@@ -243,7 +244,6 @@ function App() {
               시간을 저장하시려면 로그인해주세요.
             </div>}
         </footer>
-
       </div>
     </>
   );

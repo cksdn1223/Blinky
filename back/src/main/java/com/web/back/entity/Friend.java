@@ -1,5 +1,6 @@
 package com.web.back.entity;
 
+import com.web.back.enums.FriendStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -30,22 +31,23 @@ public class Friend {
     @JoinColumn(name = "following_id", nullable = false)
     private User following;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status;
+    private FriendStatus status;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @Builder
-    public Friend(User follower, User following, String status) {
+    public Friend(User follower, User following, FriendStatus status) {
         this.follower = follower;
         this.following = following;
-        this.status = (status != null) ? status : "ACTIVE";
+        this.status = (status != null) ? status : FriendStatus.FOLLOW;
     }
 
     // 상태 변경 로직
-    public void updateStatus(String newStatus) {
+    public void updateStatus(FriendStatus newStatus) {
         this.status = newStatus;
     }
 }

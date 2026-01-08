@@ -28,9 +28,11 @@ export type ApiRequestConfig = AxiosRequestConfig & {
 };
 
 export type UserStats = {
+  uuid: string;
   email: string;
   nickname: string;
   totalFocusTime: number;
+  role: string;
   petNickname: string;
   petHappiness: number;
   petBoredom: number;
@@ -43,3 +45,11 @@ export type UserState = {
   updateAfterSession: (totalTime: number, happiness: number, boredom: number) => void;
   updatePetStats: (happiness: number, boredom: number) => void;
 }
+
+export type SearchUser = {
+  nickname: string;
+  email: string;
+  isFollowing: boolean;
+  isFollower: boolean;
+  petName: string;
+};

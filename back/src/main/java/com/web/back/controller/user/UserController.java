@@ -1,6 +1,7 @@
 package com.web.back.controller.user;
 
 import com.web.back.dto.user.UserResponseDto;
+import com.web.back.dto.user.UserSearchResponseDto;
 import com.web.back.entity.User;
 import com.web.back.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +10,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -31,4 +33,23 @@ public class UserController {
         userService.changeNickname(nickname, principal);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<UserSearchResponseDto>> searchUser(
+            @RequestParam String nickname,
+            @AuthenticationPrincipal User user
+    ) {
+        return ResponseEntity.ok(userService.searchUser(nickname, user));
+    }
+
+    @GetMapping("following")
+    public ResponseEntity<List<UserSearchResponseDto>> getFollowings(Principal principal) {
+        return ResponseEntity.ok(userService.getFollowings(principal));
+    }
+
+    @GetMapping("follower")
+    public ResponseEntity<List<UserSearchResponseDto>> getFollowers(Principal principal) {
+        return ResponseEntity.ok(userService.getFollowers(principal));
+    }
+
 }

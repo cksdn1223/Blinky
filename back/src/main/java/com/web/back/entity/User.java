@@ -1,5 +1,6 @@
 package com.web.back.entity;
 
+import com.web.back.enums.FriendStatus;
 import com.web.back.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
@@ -10,10 +11,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Entity
@@ -49,10 +47,10 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<FocusLog> focusLog = new ArrayList<>();
 
-    @OneToMany(mappedBy = "follower", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "follower", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<Friend> followingList = new ArrayList<>();
 
-    @OneToMany(mappedBy = "following", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "following", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<Friend> followerList = new ArrayList<>();
 
     @Builder
@@ -92,29 +90,62 @@ public class User implements UserDetails {
         }
     }
 
+    public void toggleFollow(User targetUser) {
+        if (this.equals(targetUser)) {
+            throw new IllegalArgumentException("자기 자신은 팔로우할 수 없습니다.");
+        }
 
-    public void follow(User targetUser) {
-        Friend friend = Friend.builder()
-                .follower(this)    // 나
-                .following(targetUser) // 대상
-                .status("ACTIVE")
-                .build();
+        // 이미 관계가 있는지 확인
+        Optional<Friend> existingRelation = this.followingList.stream()
+                .filter(f -> f.getFollowing().equals(targetUser))
+                .findFirst();
 
-        this.followingList.add(friend);
-        targetUser.getFollowerList().add(friend);
+        if (existingRelation.isPresent()) {
+            // 이미 팔로우 중이거나 차단 중이라면 관계 삭제
+            Friend relation = existingRelation.get();
+            this.followingList.remove(relation);
+            targetUser.getFollowerList().remove(relation);
+        } else {
+            // 2. 관계가 없다면 -> 새로 팔로우
+            Friend newFriend = Friend.builder()
+                    .follower(this)
+                    .following(targetUser)
+                    .status(FriendStatus.FOLLOW)
+                    .build();
+            this.followingList.add(newFriend);
+            targetUser.getFollowerList().add(newFriend);
+        }
     }
 
-    public List<User> getFollowings() {
+    public void block(User targetUser) {
+        Optional<Friend> existingRelation = this.followingList.stream()
+                .filter(f -> f.getFollowing().equals(targetUser))
+                .findFirst();
+        if (existingRelation.isPresent()) {
+            existingRelation.get().updateStatus(FriendStatus.BLOCK);
+        } else {
+            Friend blockRelation = Friend.builder()
+                    .follower(this)
+                    .following(targetUser)
+                    .status(FriendStatus.BLOCK)
+                    .build();
+            this.followingList.add(blockRelation);
+        }
+    }
+
+    public boolean isFollowing(User target) {
         return followingList.stream()
-                .map(Friend::getFollowing)
-                .collect(Collectors.toList());
+                .anyMatch(f -> f.getFollowing().equals(target));
     }
 
-    public List<User> getFollowers() {
-        return followerList.stream()
-                .map(Friend::getFollower)
-                .collect(Collectors.toList());
+    public boolean isMutualFriend(User target) {
+        // 나도 상대를 팔로우하고, 상대도 나를 팔로우 중인지 확인
+        boolean iFollowTarget = this.isFollowing(target);
+        boolean targetFollowsMe = target.getFollowingList().stream()
+                .anyMatch(f -> f.getFollowing().equals(this));
+        return iFollowTarget && targetFollowsMe;
     }
+
 
     public void updatePetStatus(double happiness, double boredom) {
         this.pet.changeStatus(happiness, boredom);

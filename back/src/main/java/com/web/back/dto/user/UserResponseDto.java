@@ -4,8 +4,10 @@ import com.web.back.entity.User;
 import com.web.back.enums.UserRole;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public record UserResponseDto(
+        UUID uuid,
         String email,
         String nickname,
         Long totalFocusTime,
@@ -17,6 +19,7 @@ public record UserResponseDto(
 ) {
     public static UserResponseDto from(User user) {
         return new UserResponseDto(
+                user.getId(),
                 user.getEmail(),
                 user.getNickname(),
                 user.getTotalFocusSec(),

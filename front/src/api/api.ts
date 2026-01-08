@@ -49,3 +49,31 @@ export const changeUserNickname = async (nickname: string) => {
     }
   })
 }
+
+export const searchUser = async (nickname: string) => {
+  const response = await api.get('/api/user/search', {
+    params: {
+      nickname: nickname
+    }
+  })
+  return response.data;
+}
+
+export const toggleFollow = async (email: string) => {
+  await api.post('/api/friend', null, {
+      params: {
+        email: email
+      }
+    }
+  )
+}
+
+export const getFollowings = async () => {
+  const response = await api.get('/api/user/following');
+  return response.data;
+}
+
+export const getFollowers = async () => {
+  const response = await api.get('/api/user/follower');
+  return response.data;
+}
