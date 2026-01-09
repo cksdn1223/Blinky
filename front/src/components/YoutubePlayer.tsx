@@ -125,6 +125,17 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
     }
   }, [setIsPlaying]);
 
+  const handleSkip = useCallback(() => {
+    const currentVideoId = getYoutubeId(videoUrl);
+    if (currentVideoId) {
+      handleNextTrack(currentVideoId);
+    } else if (playlist.length > 0) {
+      const nextItem = playlist[0];
+      setVideoUrl(nextItem.url);
+      setPlaylist(prev => prev.filter(item => item.id !== nextItem.id));
+    }
+  }, [videoUrl, playlist, handleNextTrack])
+
   const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = Number(e.target.value);
     setVolume(newVolume);
@@ -353,9 +364,10 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
             </div>
 
 
-            <button onClick={handleAddToList} className="p-2 text-white/30 hover:text-green-400 hover:bg-white/5 rounded-xl transition-all">
+            <button onClick={handleSkip} className="p-2 text-white/30 hover:text-green-400 hover:bg-white/5 rounded-xl transition-all">
               <SkipForward size={18} />
             </button>
+
             <button onClick={handlePasteAndPlay} className="p-2 text-white/30 hover:text-red-500 hover:bg-white/5 rounded-xl transition-all">
               <Play size={18} fill={videoUrl !== "first" ? "currentColor" : "none"} />
             </button>

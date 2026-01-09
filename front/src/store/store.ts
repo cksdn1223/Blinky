@@ -169,4 +169,3 @@ export const useSocialStore = create<SocialState>((set) => ({
     lists: { FOLLOWING: [], FOLLOWER: [] }
   })
 }));
-
