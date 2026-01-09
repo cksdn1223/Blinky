@@ -52,4 +52,6 @@ export type SearchUser = {
   isFollowing: boolean;
   isFollower: boolean;
   petName: string;
+  petHappiness: number;
+  petBoredom: number;
 };

@@ -41,7 +41,7 @@ public class Pet {
     }
 
     private static final double BOREDOM_INCREASE_RATE = 0.028;
-
+    private static final double HAPPINESS_DECREASE_RATE = 0.00055; // 초당 감소량
     // 헬퍼 메서드
 
     public void changeNickname(String nickname) {
@@ -67,5 +67,13 @@ public class Pet {
         return Math.min(this.boredom + addedBoredom, 100);
     }
 
+    public double getCalculatedHappiness() {
+        if (this.lastUpdated == null) return this.happiness;
 
+        long secondsPassed = java.time.Duration.between(this.lastUpdated, java.time.LocalDateTime.now()).getSeconds();
+        double decreasedHappiness = secondsPassed * HAPPINESS_DECREASE_RATE;
+
+        // 최소치 0 제한
+        return Math.max(this.happiness - decreasedHappiness, 0);
+    }
 }

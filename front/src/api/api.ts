@@ -68,6 +68,14 @@ export const toggleFollow = async (email: string) => {
   )
 }
 
+export const blockFollower = async (email: string) => {
+  await api.put('/api/friend', null, {
+    params: {
+      email: email
+    }
+  })
+}
+
 export const getFollowings = async () => {
   const response = await api.get('/api/user/following');
   return response.data;

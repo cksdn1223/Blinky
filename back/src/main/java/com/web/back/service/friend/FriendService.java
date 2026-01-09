@@ -24,4 +24,13 @@ public class FriendService {
                 .orElseThrow(() -> new EntityNotFoundException("팔로우 과정에서 로그인중인 유저를 찾을 수 없습니다."));
         user.toggleFollow(targetUser);
     }
+
+    @Transactional
+    public void blockFollower(String email, Principal principal) {
+        User targetUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new EntityNotFoundException("차단하는 과정에서 타겟 유저를 찾을 수 없습니다."));
+        User user = userRepository.findByEmail(principal.getName())
+                .orElseThrow(() -> new EntityNotFoundException("차단하는 과정에서 로그인중인 유저를 찾을 수 없습니다."));
+        user.block(targetUser);
+    }
 }

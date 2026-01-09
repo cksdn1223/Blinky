@@ -5,6 +5,8 @@ public record UserSearchResponseDto(
         String email,
         boolean isFollowing,
         boolean isFollower,
-        String petName
+        String petName,
+        double petHappiness,
+        double petBoredom
 ) {
 }

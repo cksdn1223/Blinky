@@ -51,7 +51,7 @@ function SettingPanel({
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
-            className="absolute right-0 top-0 w-[350px] bg-[#1a1c1e]/95 backdrop-blur-xl border border-white/10 rounded-[1rem] p-7 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] origin-top-right"
+            className="absolute right-0 top-0 w-[350px] bg-[#1a1c1e]/95 backdrop-contrast-150 border border-white/10 rounded-[1rem] p-7 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] origin-top-right"
           >
             {/* 헤더 */}
             <div className="flex justify-between items-center mb-8">
@@ -141,9 +141,9 @@ function SettingPanel({
               </div>
             </div>
 
-            <div className="mt-10 pt-4 text-center">
-              <p className="text-[9px] text-white/20 font-mono tracking-tighter">
-                * 이름을 입력하고 체크 버튼을 눌러 확정하세요
+            <div className="mt-1 pt-4 text-center">
+              <p className="text-[12px] text-white/20 font-mono tracking-tighter">
+                이름을 입력하고 체크 버튼을 눌러 확정하세요
               </p>
             </div>
           </motion.div>
