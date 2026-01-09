@@ -105,7 +105,7 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
     setPlaylist(prev => prev.filter(item => item.id !== id));
   };
 
-  const handleNextTrack = (videoId: string) => {
+  const handleNextTrack = useCallback((videoId: string) => {
     const currentPlaylist = playlistRef.current;
     const currentIndex = currentPlaylist.findIndex(item => item.id === videoId);
 
@@ -118,11 +118,12 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
         setVideoTitle("YOUTUBE 링크를 복사 후 재생버튼을 눌러주세요.");
         setCurrentTime(0);
         setDuration(0);
+        setIsPlaying?.(false);
       }
 
       setPlaylist(prev => prev.filter(item => item.id !== videoId));
     }
-  }
+  }, [setIsPlaying]);
 
   const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = Number(e.target.value);
@@ -187,14 +188,13 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
             // onPlayerReadyRef.current(e);
           },
           onStateChange: (e: YT.OnStateChangeEvent) => {
+            const videoData = e.target.getVideoData();
+            const currentVideoId = videoData?.video_id;
+
             // 재생 중일 때만 인터벌 가동
             if (e.data === window.YT.PlayerState.PLAYING) {
               setIsPlaying?.(true);
-
-              const videoData = e.target.getVideoData();
-              if (videoData && videoData.video_id) {
-                onVideoChangeRef.current?.(videoData.video_id);
-              }
+              if (currentVideoId) onVideoChangeRef.current?.(currentVideoId); // 재생 시작 시 보고
 
               interval = setInterval(() => {
                 if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
@@ -235,7 +235,7 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
       if (playerRef.current) playerRef.current.destroy();
       clearInterval(interval);
     };
-  }, [videoUrl, setIsPlaying]);
+  }, [videoUrl, setIsPlaying, handleNextTrack]);
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 

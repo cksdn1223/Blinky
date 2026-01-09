@@ -1,22 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Check, User, Heart } from "lucide-react";
 import { useEffect, useState } from "react";
+import { propTypes } from "../types";
 
 const MAX_NAME_SIZE = 10;
-
-type propTypes = {
-  // 유저 관련
-  userName: string;
-  handleUserNickname: (nickname: string) => Promise<void>;
-
-  // 펫 관련
-  petName: string;
-  handlePetNickname: (nickname: string) => Promise<void>;
-
-  // 패널 제어
-  setIsSettingsOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  isSettingsOpen: boolean;
-};
 
 function SettingPanel({
   userName,

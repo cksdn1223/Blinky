@@ -3,6 +3,7 @@ import { Heart, HeartHandshake, X, UserCheck, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { blockFollower, toggleFollow } from "../api/api";
 import { SearchUser } from "../types";
+import { useSocialStore } from "../store/store";
 
 // 사용자 아이템 컴포넌트
 function UserItem({
@@ -16,6 +17,8 @@ function UserItem({
   activeTab: string;
   onActionSuccess: (email: string) => void;
 }) {
+  const { addFollowingToList, removeUserFromList } = useSocialStore();
+
   const [localIsFollowing, setLocalIsFollowing] = useState(user.isFollowing);
   const [isPending, setIsPending] = useState(false);
 
@@ -25,7 +28,7 @@ function UserItem({
   const handleAction = async (email: string) => {
     if (isPending) return;
 
-    // 1. 차단 로직 (검색 중이 아니고 팔로워 탭일 때)
+    // 차단 로직 (검색 중이 아니고 팔로워 탭일 때)
     if (!isSearch && activeTab === 'FOLLOWER') {
       if (window.confirm(`${user.nickname}님을 차단하시겠습니까?`)) {
         try {
@@ -41,15 +44,28 @@ function UserItem({
       return;
     }
 
-    // 2. 팔로우 토글 로직 (그 외 모든 상황)
-    setLocalIsFollowing(!localIsFollowing);
+    // 팔로우 토글 로직
+    const nextFollowingState = !localIsFollowing;
+    setLocalIsFollowing(nextFollowingState);
     setIsPending(true);
+
     try {
       await toggleFollow(email);
-      // 팔로잉 탭에서 언팔로우했을 경우 리스트에서 바로 없애주기 위해 리프레시
-      if (!isSearch && activeTab === 'FOLLOWING') onActionSuccess(email);
+
+      if (nextFollowingState) {
+        addFollowingToList({
+          ...user,
+          isFollowing: true
+        });
+      } else {
+        removeUserFromList(email, 'FOLLOWING');
+        if (!isSearch && activeTab === 'FOLLOWING') {
+          onActionSuccess(email);
+        }
+      }
     } catch (error) {
-      setLocalIsFollowing(user.isFollowing);
+      // 실패 시 UI 복구
+      setLocalIsFollowing(!nextFollowingState);
       console.error("토글 실패", error);
     } finally {
       setIsPending(false);
@@ -101,10 +117,10 @@ function UserItem({
           disabled={isPending}
           onClick={() => handleAction(user.email)}
           className={`p-2.5 rounded-xl transition-all outline-none focus:outline-none ${!isSearch && activeTab === 'FOLLOWER'
-              ? "text-red-500/40 hover:text-red-500 hover:bg-red-500/10" 
-              : localIsFollowing
-                ? "text-blue-400 hover:text-blue-300" 
-                : "text-white/20 hover:text-white"
+            ? "text-red-500/40 hover:text-red-500 hover:bg-red-500/10"
+            : localIsFollowing
+              ? "text-blue-400 hover:text-blue-300"
+              : "text-white/20 hover:text-white"
             }`}
         >
           {!isSearch && activeTab === 'FOLLOWER' ? <X size={18} /> : localIsFollowing ? <UserCheck size={18} /> : <UserPlus size={18} />}

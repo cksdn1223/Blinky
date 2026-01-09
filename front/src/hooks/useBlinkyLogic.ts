@@ -1,43 +1,33 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { PetStatus } from '../types';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuthStore, useUserStore } from '../store/store';
 import { interactPet } from '../api/api';
 
 export const useBlinkyLogic = () => {
-  const { userStats } = useUserStore();
+  const { userStats, updatePetStats } = useUserStore();
   const { token } = useAuthStore();
-  const [status, setStatus] = useState('sleep'); // 기본 상태는 수면
-  const [stats, setStats] = useState<PetStatus>({
-    happiness: 0,
-    boredom: 0
-  });
 
-  useEffect(() => {
-    if (userStats) {
-      setStats({
-        // Number() 변환 시 undefined나 null이면 0이 될 수 있으므로 기본값 처리
-        happiness: Number(userStats.petHappiness || 0),
-        boredom: Number(userStats.petBoredom || 0)
-      });
+  const [status, setStatus] = useState('sleep'); // 기본 상태는 수면
+
+  const stats = useMemo(() => {
+    return {
+      happiness: userStats?.petHappiness || 0,
+      boredom: userStats?.petBoredom || 0,
     }
   }, [userStats]);
 
+  // 심심함 증가 로직 (스토어 액션 호출)
   useEffect(() => {
     if (!token) return;
-
     const timer = setInterval(() => {
-      setStats(prev => ({
-        ...prev,
-        boredom: Math.min(prev.boredom + 1, 100)
-      }));
+      // 스토어에 직접 업데이트 요청
+      updatePetStats(stats.happiness, Math.min(stats.boredom + 1, 100));
     }, 38000);
-
     return () => clearInterval(timer);
-  }, [token]);
+  }, [token, stats.happiness, stats.boredom, updatePetStats]);
+
 
   // 연속 상호작용 횟수 관리 (3번 넘으면 pounce)
   const interactionCountRef = useRef(0);
-  // 특정 행동을 강제 유지하는 타이머
   const actionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 상태 결정 로직
@@ -89,17 +79,31 @@ export const useBlinkyLogic = () => {
 
     interactionCountRef.current += 1;
 
-    // 3번 연속 클릭했거나 심심함 수치가 30 이하일 때
-    if (stats.boredom <= 30) {
+    // 공통 수치 업데이트 함수 (스토어 연동)
+    const handleStatsUpdate = async () => {
+      // 로컬에서 즉시 반영 (Optimistic Update 효과)
+      const nextBoredom = Math.max(stats.boredom - 30, 0);
+      const nextHappiness = stats.happiness + 1;
+      updatePetStats(nextHappiness, nextBoredom);
+
+      if (token) {
+        try {
+          const data = await interactPet();
+          if (data) {
+            // 서버 데이터로 최종 동기화
+            updatePetStats(data.happiness, data.boredom);
+          }
+        } catch (e) {
+          console.error("상호작용 반영 실패", e);
+        }
+      }
+    };
+
+    // 특수 동작 결정
+    if (stats.boredom <= 30 || interactionCountRef.current >= 3) {
       setStatus('pounce');
-      interactionCountRef.current = 0; // 카운트 초기화
-      return;
-    }
-    else if (interactionCountRef.current >= 3) {
-      setStatus('pounce');
-      interactionCountRef.current = 0; // 카운트 초기화
-      handleStatsUpdate();
-      return;
+      interactionCountRef.current = 0;
+      await handleStatsUpdate();
     } else {
       const actions = ['groom', 'alert', 'creep', 'walk', 'run', 'jump'];
       const randomAction = actions[Math.floor(Math.random() * actions.length)];
@@ -109,31 +113,10 @@ export const useBlinkyLogic = () => {
         actionTimeoutRef.current = null;
         setStatus('idle');
       }, 3000);
+
+      await handleStatsUpdate();
     }
-
-    // 공통 수치 업데이트 함수
-    async function handleStatsUpdate() {
-      setStats(prev => ({
-        ...prev,
-        boredom: Math.max(prev.boredom - 30, 0),
-        happiness: Math.max(prev.happiness + 1, 0),
-      }));
-
-      if (token) {
-        try {
-          const data = await interactPet();
-          if (data) {
-            setStats({
-              happiness: data.happiness,
-              boredom: data.boredom
-            });
-          }
-        } catch (e) { /* 에러 처리 */ }
-      }
-    }
-
-    handleStatsUpdate();
-  }, [status, token, stats.boredom]);
+  }, [status, token, stats, updatePetStats]);
 
   return { status, stats, interact, setStatus };
 };
