@@ -56,6 +56,9 @@ dependencies {
 
 	// Google Oauth2 의존성
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+
+	// Redis 사용을 위한 의존성
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 }
 
 tasks.named('test') {

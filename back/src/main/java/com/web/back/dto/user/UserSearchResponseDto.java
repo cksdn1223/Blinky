@@ -7,6 +7,7 @@ public record UserSearchResponseDto(
         boolean isFollower,
         String petName,
         double petHappiness,
-        double petBoredom
+        double petBoredom,
+        boolean isOnline
 ) {
 }

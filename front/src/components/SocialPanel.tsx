@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { X, Search, Ghost } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { SearchUser } from "../types";
 import { searchUser } from "../api/api"; // API 추가
 import UserItem from "./UserItem";
@@ -13,28 +13,35 @@ function SocialPanel({ isSocialOpen, setIsSocialOpen }: { isSocialOpen: boolean;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
-  const [activeTab, setActiveTab] = useState<TabType>("FOLLOWING"); // 탭 상태 추가
+  const [activeTab, setActiveTab] = useState<TabType>("FOLLOWING");
   const [isReady, setIsReady] = useState(false);
+
+  const loadSocialData = useCallback(async () => {
+    try {
+      await fetchFriendsList(activeTab);
+    } catch (error) {
+      console.error("데이터 로드 실패:", error);
+    }
+  }, [activeTab, fetchFriendsList]);
 
   // 패널 열릴 때 초기화
   useEffect(() => {
     if (isSocialOpen) {
-      if (!isReady) setSearchQuery("");
+      loadSocialData();
 
-      // 데이터가 없을 때만 즉시 로드 (캐싱 활용)
-      if (lists[activeTab].length === 0) {
-        fetchFriendsList(activeTab);
-      }
-
-      const interval = setInterval(() => fetchFriendsList(activeTab), 60000);
-      return () => clearInterval(interval);
+      // 애니메이션 준비
+      const timer = setTimeout(() => setIsReady(true), 250);
+      return () => clearTimeout(timer);
+    } else {
+      setIsReady(false);
+      setSearchQuery("");
     }
-  }, [isSocialOpen, activeTab, fetchFriendsList, lists, isReady]);
+  }, [isSocialOpen, activeTab, loadSocialData]);
 
   // 검색 디바운싱
   useEffect(() => {
     const trimmed = searchQuery.trim();
-    if (trimmed.length === 0 || trimmed === "@") {
+    if (!trimmed || trimmed === "@") {
       setSearchResults([]);
       return;
     }
@@ -51,16 +58,6 @@ function SocialPanel({ isSocialOpen, setIsSocialOpen }: { isSocialOpen: boolean;
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // 애니메이션 준비 상태 관리
-  useEffect(() => {
-    if (isSocialOpen) {
-      const timer = setTimeout(() => setIsReady(true), 250);
-      return () => clearTimeout(timer);
-    } else {
-      setIsReady(false);
-    }
-  }, [isSocialOpen]);
-
   return (
     <AnimatePresence>
       {isSocialOpen && (
@@ -69,7 +66,7 @@ function SocialPanel({ isSocialOpen, setIsSocialOpen }: { isSocialOpen: boolean;
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.98, y: 10 }}
           transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-          className="absolute -right-16 top-0 w-[350px] h-[580px] bg-[#1a1c1e]/95 backdrop-blur-xl border border-white/10 rounded-[1.5rem] px-7 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] origin-top-right flex flex-col"
+          className="absolute -right-16 top-0 w-[350px] h-[565px] bg-[#1a1c1e]/95 backdrop-blur-sm border border-white/10 rounded-[1.5rem] px-7 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] origin-top-right flex flex-col"
         >
           {/* 헤더 생략 (기존과 동일) */}
           <div className="flex justify-between items-center mb-4">
@@ -123,28 +120,41 @@ function SocialPanel({ isSocialOpen, setIsSocialOpen }: { isSocialOpen: boolean;
                 transition={{ duration: 0.2 }}
                 className="space-y-4"
               >
-                {searchQuery.length > 0 ? (
-                  searchResults.map((user) => (
-                    <UserItem
-                      key={user.email}
-                      user={user}
-                      isSearch={true}
-                      activeTab={activeTab}
-                      // 스토어 액션 사용
-                      onActionSuccess={(email) => removeUserFromList(email, activeTab)}
-                    />
-                  ))
-                ) : (
-                  lists[activeTab].map((friend) => (
-                    <UserItem
-                      key={friend.email}
-                      user={friend}
-                      isSearch={false}
-                      activeTab={activeTab}
-                      onActionSuccess={(email) => removeUserFromList(email, activeTab)}
-                    />
-                  ))
-                )}
+                {searchQuery.length > 0 ?
+                  searchResults.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-white/20">
+                      <Ghost size={32} strokeWidth={1} className="mb-2" />
+                      <p className="text-[13px] font-mono tracking-tighter">USER_NOT_FOUND</p>
+                    </div>
+                  ) : (
+                    searchResults.map((user) => (
+                      <UserItem
+                        key={user.email}
+                        user={user}
+                        isSearch={true}
+                        activeTab={activeTab}
+                        isOnline={user.isOnline}
+                        onActionSuccess={(email) => removeUserFromList(email, activeTab)}
+                      />
+                    ))
+                  ) :
+                  lists[activeTab].length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-white/20">
+                      <Ghost size={32} strokeWidth={1} className="mb-2" />
+                      <p className="text-[13px] font-mono tracking-tighter">USER_NOT_FOUND</p>
+                    </div>
+                  ) : (
+                    lists[activeTab].map((friend) => (
+                      <UserItem
+                        key={friend.email}
+                        user={friend}
+                        isSearch={false}
+                        activeTab={activeTab}
+                        isOnline={friend.isOnline}
+                        onActionSuccess={(email) => removeUserFromList(email, activeTab)}
+                      />
+                    ))
+                  )}
               </motion.div>
             </AnimatePresence>
           </div>

@@ -55,6 +55,7 @@ export type SearchUser = {
   petName: string;
   petHappiness: number;
   petBoredom: number;
+  isOnline: boolean;
 };
 
 export type SessionState = {

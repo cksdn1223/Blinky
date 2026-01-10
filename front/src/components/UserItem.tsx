@@ -10,11 +10,13 @@ function UserItem({
   user,
   isSearch,
   activeTab,
+  isOnline,
   onActionSuccess
 }: {
   user: SearchUser;
   isSearch: boolean;
   activeTab: string;
+  isOnline: boolean;
   onActionSuccess: (email: string) => void;
 }) {
   const { addFollowingToList, removeUserFromList } = useSocialStore();
@@ -98,6 +100,9 @@ function UserItem({
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="text-[15px] font-black text-white">{user.nickname}</span>
+              {isOnline && (
+                <span className="w-3 h-3 bg-green-500 rounded-full border-2 border-[#1a1c1e] shadow-[0_0_8px_#22c55e]" />
+              )}
               {/* 맞팔 아이콘  */}
               {user.isFollowing && user.isFollower && (
                 <div className="flex items-center justify-center p-1 bg-pink-500/10 text-pink-400 rounded-full border border-pink-500/20">

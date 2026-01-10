@@ -9,8 +9,10 @@ import { changePetNickname, changeUserNickname, sendEnd } from "./api/api";
 import { useAuthStore, useSessionStore, useUIStore, useUserStore } from "./store/store";
 import SettingPanel from "./components/SettingPanel";
 import SocialPanel from "./components/SocialPanel";
+import { useSse } from "./hooks/useSse";
 
 function App() {
+  useSse();
   const { token, setToken, logout } = useAuthStore();
   const { userStats, fetchStats, updateAfterSession, updateNicknames } = useUserStore();
   const { status, stats, interact, setStatus } = useBlinkyLogic();

@@ -5,6 +5,7 @@ import com.web.back.entity.User;
 import com.web.back.enums.FriendStatus;
 import com.web.back.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
+    private final StringRedisTemplate redisTemplate;
 
     @Transactional
     public void changeNickname(String nickname, Principal principal) {
@@ -47,7 +49,8 @@ public class UserService {
                         u.isFollowing(currentUser),
                         u.getPet().getName(),
                         u.getPet().getCalculatedHappiness(),
-                        u.getPet().getCalculatedBoredom()
+                        u.getPet().getCalculatedBoredom(),
+                        false
                 ))
                 .toList();
     }
@@ -61,6 +64,8 @@ public class UserService {
                 .filter(f -> isNotBlockedBy(f.getFollowing(), user))
                 .map(f -> {
                     User target = f.getFollowing();
+                    // Redis에서 온라인상태 확인
+                    boolean isOnline = redisTemplate.hasKey("status:" + target.getEmail());
                     return new UserSearchResponseDto(
                             target.getNickname(),
                             target.getEmail(),
@@ -68,7 +73,8 @@ public class UserService {
                             target.isFollowing(user),
                             target.getPet().getName(),
                             target.getPet().getCalculatedHappiness(),
-                            target.getPet().getCalculatedBoredom()
+                            target.getPet().getCalculatedBoredom(),
+                            isOnline
                     );
                 })
                 .toList();
@@ -83,6 +89,7 @@ public class UserService {
                 .filter(f -> isNotBlockedBy(user, f.getFollower()))
                 .map(f -> {
                     User target = f.getFollower();
+                    boolean isOnline = redisTemplate.hasKey("status:" + target.getEmail());
                     return new UserSearchResponseDto(
                             target.getNickname(),
                             target.getEmail(),
@@ -90,7 +97,8 @@ public class UserService {
                             true,
                             target.getPet().getName(),
                             target.getPet().getCalculatedHappiness(),
-                            target.getPet().getCalculatedBoredom()
+                            target.getPet().getCalculatedBoredom(),
+                            isOnline
                     );
                 })
                 .toList();
