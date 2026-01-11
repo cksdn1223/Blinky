@@ -2,6 +2,7 @@ package com.web.back.exception;
 
 import com.web.back.dto.exception.ErrorResponseRecord;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
@@ -25,7 +26,10 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 request.getDescription(false).replace("uri=", "")
         );
-        return new ResponseEntity<>(errorResponseRecord, status);
+        return ResponseEntity
+                .status(status)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(errorResponseRecord);
     }
 
     // 2. 예외 종류에 따른 핸들러 통합 및 재구성
@@ -62,5 +66,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseRecord> handleGlobalException(Exception ex, WebRequest request) {
         return buildErrorResponse(ex, HttpStatus.INTERNAL_SERVER_ERROR, request);
+    }
+
+
+    @ExceptionHandler(org.springframework.web.context.request.async.AsyncRequestTimeoutException.class)
+    public ResponseEntity<Void> handleAsyncTimeout() {
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }

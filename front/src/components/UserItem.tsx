@@ -3,7 +3,7 @@ import { Heart, HeartHandshake, X, UserCheck, UserPlus, LogIn } from "lucide-rea
 import { useState } from "react";
 import { blockFollower, joinRoom, toggleFollow } from "../api/api";
 import { SearchUser } from "../types";
-import { useRoomStore, useSocialStore } from "../store/store";
+import { useMusicStore, useRoomStore, useSocialStore } from "../store/store";
 
 // 사용자 아이템 컴포넌트
 function UserItem({
@@ -75,10 +75,17 @@ function UserItem({
     }
   };
 
-  const handleJoin = async (email: string) => {
+  const handleJoin = async (email: string, nickname: string) => {
     try {
-      await joinRoom(email);
-      setRoom(email);
+      const response = await joinRoom(email);
+      setRoom(email, nickname);
+
+      if (response.data.currentMusic && typeof response.data.currentMusic === 'object') {
+        useMusicStore.getState().syncMusic({
+          ...response.data.currentMusic,
+          ownerEmail: email // DTO에 없다면 주입
+        });
+      }
     } catch (error) {
       console.error("방 입장 실패: ", error);
     }
@@ -128,7 +135,7 @@ function UserItem({
         </div>
         {isOnline && activeTab === `FOLLOWING` &&
           <button
-            onClick={() => handleJoin(user.email)}
+            onClick={() => handleJoin(user.email, user.nickname)}
             className="p-2 ml-0.5 rounded-xl transition-all outline-none focus:outline-none text-blue-400 hover:text-blue-300"
           >
             <LogIn size={18} />

@@ -142,7 +142,8 @@ export type MusicState = {
 }
 
 export type RoomState = {
-  currentRoomOwnerEmail: string | null; // null이면 내 대시보드, 값이 있으면 친구 대시보드
-  setRoom: (email: string | null) => void;
+  currentRoomOwnerEmail: string | null;
+  currentRoomOwnerNickname: string | null;
+  setRoom: (email: string | null, nickname: string | null) => void;
   leaveRoom: () => void;
 }

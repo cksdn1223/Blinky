@@ -51,9 +51,13 @@ public class SseService {
 
     @Scheduled(fixedDelay = 30000)
     public void broadcastHeartbeat() {
-        emitters.keySet().forEach(email -> {
-            sendEvent(email, "heartbeat", "ping");
-            redisTemplate.expire("status:" + email, 45, TimeUnit.SECONDS);
+        emitters.keySet().parallelStream().forEach(email -> {
+            try {
+                sendEvent(email, "heartbeat", "ping");
+                redisTemplate.expire("status:" + email, 45, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                emitters.remove(email);
+            }
         });
     }
 

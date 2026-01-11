@@ -1,17 +1,21 @@
 package com.web.back.service.room;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.web.back.dto.share.MusicDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class RoomService {
     private final RedisTemplate<String, String> redisTemplate;
+    private final ObjectMapper objectMapper;
 
     private static final int MAX_PARTICIPANTS = 10;
 
@@ -51,6 +55,30 @@ public class RoomService {
             redisTemplate.delete(locationKey);
             log.info("유저 [{}] 가 [{}] 의 방에서 퇴장했습니다.", guestEmail, ownerEmail);
         }
+    }
+
+    public void updateCurrentMusic(String ownerEmail, MusicDto musicDto) {
+        String key = "room:music:" + ownerEmail;
+        try {
+            String json = objectMapper.writeValueAsString(musicDto);
+            redisTemplate.opsForValue().set(key, json, 5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.error("음악 정보 저장 실패", e);
+        }
+    }
+
+    public MusicDto getRoomCurrentMusic(String ownerEmail) {
+        String key = "room:music:" + ownerEmail;
+        String json = redisTemplate.opsForValue().get(key);
+
+        if (json != null) {
+            try {
+                return objectMapper.readValue(json, MusicDto.class);
+            } catch (Exception e) {
+                log.error("음악 정보 파싱 실패", e);
+            }
+        }
+        return null; // 재생 중인 음악이 없음
     }
 
     public Set<String> getParticipants(String ownerEmail) {

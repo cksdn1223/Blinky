@@ -165,8 +165,15 @@ export const useRoomStore = create<RoomState>()(
   persist(
     (set) => ({
       currentRoomOwnerEmail: null,
-      setRoom: (email) => set({ currentRoomOwnerEmail: email }),
-      leaveRoom: () => set({ currentRoomOwnerEmail: null }),
+      currentRoomOwnerNickname: null,
+      setRoom: (email, nickname) => set({
+        currentRoomOwnerEmail: email,
+        currentRoomOwnerNickname: nickname
+      }),
+      leaveRoom: () => set({
+        currentRoomOwnerEmail: null,
+        currentRoomOwnerNickname: null
+      }),
     }),
     {
       name: 'room-storage', // localStorage에 저장될 키 이름

@@ -29,7 +29,7 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
   const [isVolumeOpen, setIsVolumeOpen] = useState(false);
   const volumeRef = useRef(volume);
   const onVideoChangeRef = useRef(onVideoChange);
-  const { currentRoomOwnerEmail, leaveRoom: exitRoomStore } = useRoomStore();
+  const { currentRoomOwnerEmail, currentRoomOwnerNickname, leaveRoom: exitRoomStore } = useRoomStore();
   const { currentRoomMusic } = useMusicStore();
   const { userStats } = useUserStore();
   const isOwner = !currentRoomOwnerEmail || currentRoomOwnerEmail === userStats?.email;
@@ -49,6 +49,39 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
         console.error("음악 공유 실패:", err);
       }
     }
+  }, [isOwner, userStats?.email]);
+
+  // 방장일 경우 주기적으로(3초마다) 재생 상태를 서버에 공유하여 참여자들과 시간 동기화 유지
+  useEffect(() => {
+    let syncInterval: ReturnType<typeof setInterval>;
+
+    if (isOwner && userStats?.email) {
+      syncInterval = setInterval(async () => {
+        if (playerRef.current && typeof playerRef.current.getPlayerState === 'function') {
+          const currentVideoData = playerRef.current.getVideoData();
+          if (!currentVideoData || !currentVideoData.video_id) { return; }
+
+          const playerState = playerRef.current.getPlayerState();
+          const currentTime = playerRef.current.getCurrentTime();
+
+          const isPlayingNow = playerState === window.YT.PlayerState.PLAYING;
+          const videoData = {
+            videoId: playerRef.current.getVideoData().video_id,
+            isPlaying: isPlayingNow,
+            progressMs: Math.floor(currentTime * 1000),
+          };
+          try {
+            await shareMusic(userStats.email, videoData);
+          } catch (err) {
+            console.error("Sync error:", err);
+          }
+        }
+      }, 3000);
+    }
+
+    return () => {
+      if (syncInterval) clearInterval(syncInterval);
+    };
   }, [isOwner, userStats?.email]);
 
   const handleLeaveRoom = async () => {
@@ -397,8 +430,11 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
 
           {/* 제목 영역 */}
           <div className="flex flex-col overflow-hidden mr-4 min-w-[320px] h-[40px] justify-center">
-            <span className="text-[9px] text-green-500 font-mono font-bold uppercase tracking-[0.15em] opacity-70">
-              {isOwner ? "Playing Now" : `Listening in ${currentRoomOwnerEmail}'s Room`}
+            <span className="text-[11px] text-green-500 font-mono font-bold uppercase tracking-[0.15em] opacity-70">
+              {isOwner
+                ? "Playing Now"
+                : `Listening in ${currentRoomOwnerNickname || currentRoomOwnerEmail}'s Room`
+              }
             </span>
             <div className="relative h-[20px] overflow-hidden">
               <AnimatePresence mode="wait">

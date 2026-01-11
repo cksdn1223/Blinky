@@ -6,8 +6,8 @@ import { joinRoom } from '../api/api';
 export const useSse = () => {
   const email = useUserStore((state) => state.userStats?.email);
   const token = useAuthStore((state) => state.token);
-  const eventSourceRef = useRef<EventSource | null>(null);
 
+  const eventSourceRef = useRef<EventSource | null>(null);
   const [reconnectCount, setReconnectCount] = useState(0);
 
   useEffect(() => {
@@ -25,9 +25,10 @@ export const useSse = () => {
         headers: {
           'Authorization': `Bearer ${token}` // 여기에 토큰 주입!
         },
-        heartbeatTimeout: 120000 // 하트비트 제한 시간 설정 (옵션)
+        heartbeatTimeout: 600000 // 하트비트 제한 시간 설정 (옵션)
       }
     );
+
     const es = eventSourceRef.current;
 
     // 최초 연결 이벤트
@@ -36,8 +37,7 @@ export const useSse = () => {
       const { currentRoomOwnerEmail } = useRoomStore.getState();
       if (currentRoomOwnerEmail) {
         console.log(`🔄 재연결 후 ${currentRoomOwnerEmail} 방에 다시 입장 시도...`);
-        // joinRoom API 호출 로직 (예: axios.post /api/room/join ...)
-        joinRoom(currentRoomOwnerEmail);
+        joinRoom(currentRoomOwnerEmail).catch(err => console.error("재참여 실패", err));
       }
     });
 
@@ -48,15 +48,14 @@ export const useSse = () => {
 
     es.addEventListener('music-sync', (e) => {
       const data = JSON.parse(e.data);
-
-      const { currentRoomOwnerEmail } = useRoomStore.getState();
       const myEmail = useUserStore.getState().userStats?.email;
 
-      // 내가 방장인 경우: 서버가 쏜 이벤트를 내가 다시 받을 필요 없음
+      const { currentRoomOwnerEmail: activeRoomOwner } = useRoomStore.getState();
+
       if (data.ownerEmail === myEmail) return;
 
       // 내가 현재 그 친구의 방에 접속해 있는 경우에만 동기화
-      if (data.ownerEmail === currentRoomOwnerEmail) {
+      if (data.ownerEmail === activeRoomOwner) {
         useMusicStore.getState().syncMusic(data);
       }
     });
@@ -66,7 +65,7 @@ export const useSse = () => {
       console.error('❌ SSE Error:', error);
       es.close();
       // 재연결 시도
-      if (email && token) {
+      if (useRoomStore.getState().currentRoomOwnerEmail) {
         console.log('3초 후 SSE 재연결 시도');
         setTimeout(() => {
           setReconnectCount(prev => prev + 1);
