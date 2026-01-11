@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Play, ListMusic, Trash2, X, Repeat1, Repeat, VolumeX, Volume1, Volume2, SkipForward } from 'lucide-react';
+import { Play, ListMusic, Trash2, X, Repeat1, Repeat, VolumeX, Volume1, Volume2, SkipForward, LogOut } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { YouTubePlayerProps, PlaylistItem } from '../types';
+import { useMusicStore, useRoomStore, useUserStore } from '../store/store';
+import { leaveRoom, shareMusic } from '../api/api';
 
 declare global {
   interface Window {
@@ -27,6 +29,41 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
   const [isVolumeOpen, setIsVolumeOpen] = useState(false);
   const volumeRef = useRef(volume);
   const onVideoChangeRef = useRef(onVideoChange);
+  const { currentRoomOwnerEmail, leaveRoom: exitRoomStore } = useRoomStore();
+  const { currentRoomMusic } = useMusicStore();
+  const { userStats } = useUserStore();
+  const isOwner = !currentRoomOwnerEmail || currentRoomOwnerEmail === userStats?.email;
+
+  const handleVideoStateChange = useCallback(async (player: YT.Player) => {
+    if (isOwner && userStats?.email) {
+      const videoData = {
+        videoId: player.getVideoData().video_id,
+        isPlaying: player.getPlayerState() === window.YT.PlayerState.PLAYING,
+        progressMs: Math.floor(player.getCurrentTime() * 1000),
+      };
+
+      // 서버 API 호출
+      try {
+        await shareMusic(userStats.email, videoData);
+      } catch (err) {
+        console.error("음악 공유 실패:", err);
+      }
+    }
+  }, [isOwner, userStats?.email]);
+
+  const handleLeaveRoom = async () => {
+    try {
+      await leaveRoom();
+    } catch (error) {
+      console.error("서버 퇴장 처리 실패");
+    } finally {
+      exitRoomStore();
+      useMusicStore.getState().resetRoomMusic();
+      setVideoUrl("first");
+      setVideoTitle("YOUTUBE 링크를 복사 후 재생버튼을 눌러주세요.");
+    }
+  }
+
   useEffect(() => {
     onVideoChangeRef.current = onVideoChange;
   }, [onVideoChange]);
@@ -48,6 +85,40 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
     }
   }, [volume]);
 
+  useEffect(() => {
+    // 내가 참여자이고, 동기화 데이터가 있고, 플레이어 객체가 준비되었을 때
+    if (!isOwner && currentRoomMusic) {
+      const { videoId, isPlaying, progressMs } = currentRoomMusic;
+
+      // (1) 영상 ID가 다르면 새로운 영상 로드
+      const currentVideoId = getYoutubeId(videoUrl);
+      if (videoId !== currentVideoId) {
+        setVideoUrl(`https://www.youtube.com/watch?v=${videoId}`);
+        return;
+      }
+
+      if (playerRef.current && typeof playerRef.current.getPlayerState === 'function') {
+        try {
+          const playerState = playerRef.current.getPlayerState();
+
+          // 재생/일시정지 동기화
+          if (isPlaying && playerState !== window.YT.PlayerState.PLAYING) {
+            playerRef.current.playVideo();
+          } else if (!isPlaying && playerState === window.YT.PlayerState.PLAYING) {
+            playerRef.current.pauseVideo();
+          }
+
+          const currentTime = playerRef.current.getCurrentTime();
+          const targetTime = progressMs / 1000;
+          if (Math.abs(currentTime - targetTime) > 2) {
+            playerRef.current.seekTo(targetTime, true);
+          }
+        } catch (e) {
+          console.log("플레이어 준비안됨");
+        }
+      }
+    }
+  }, [currentRoomMusic, isOwner, videoUrl]);
 
   const getYoutubeId = (url: string): string | null => {
     if (!url || url === "first") return null;
@@ -193,14 +264,35 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
         },
         events: {
           onReady: (e: YT.PlayerEvent) => {
-            e.target.playVideo();
             e.target.setVolume(volumeRef.current);
-            setDuration(e.target.getDuration() - 1); // 전체 길이 설정
-            // onPlayerReadyRef.current(e);
+            const totalDuration = e.target.getDuration();
+            setDuration(totalDuration > 0 ? totalDuration - 1 : 0);
+
+            if (!isOwner) {
+              const music = useMusicStore.getState().currentRoomMusic;
+              if (music) {
+                const targetTime = music.progressMs / 1000;
+                e.target.seekTo(targetTime, true);
+
+                if (music.isPlaying) {
+                  // [주의] 새로고침 직후 유저 클릭이 없으면 여기서 에러가 발생하며 멈출 수 있음
+                  e.target.playVideo();
+                } else {
+                  e.target.pauseVideo();
+                }
+                return; // 참여자는 여기서 종료
+              }
+            } else {
+              e.target.playVideo();
+            }
           },
           onStateChange: (e: YT.OnStateChangeEvent) => {
             const videoData = e.target.getVideoData();
             const currentVideoId = videoData?.video_id;
+
+            if (isOwner) {
+              handleVideoStateChange(e.target);
+            }
 
             // 재생 중일 때만 인터벌 가동
             if (e.data === window.YT.PlayerState.PLAYING) {
@@ -246,7 +338,7 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
       if (playerRef.current) playerRef.current.destroy();
       clearInterval(interval);
     };
-  }, [videoUrl, setIsPlaying, handleNextTrack]);
+  }, [videoUrl, setIsPlaying, handleNextTrack, isOwner, handleVideoStateChange]);
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -299,22 +391,22 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
         )}
       </span>
 
-      {/* Info */}
+      {/* Info Area */}
       <div className="w-[525px] p-5 flex flex-col justify-center bg-gradient-to-r from-green-900/[0.05] to-transparent">
         <div className="flex justify-between items-center mb-4">
 
-          {/* 제목 애니메이션 영역 */}
+          {/* 제목 영역 */}
           <div className="flex flex-col overflow-hidden mr-4 min-w-[320px] h-[40px] justify-center">
-            <span className="text-[9px] text-green-500 font-mono font-bold uppercase tracking-[0.15em] mb-1 opacity-70">
-              Playing Now
+            <span className="text-[9px] text-green-500 font-mono font-bold uppercase tracking-[0.15em] opacity-70">
+              {isOwner ? "Playing Now" : `Listening in ${currentRoomOwnerEmail}'s Room`}
             </span>
-            <div className="relative h-[20px] overflow-hidden"> {/* 애니메이션이 일어날 박스 */}
+            <div className="relative h-[20px] overflow-hidden">
               <AnimatePresence mode="wait">
                 <motion.h3
-                  key={videoTitle} // key가 바뀌면 애니메이션이 실행됨
-                  initial={{ y: 20, opacity: 0 }}   // 아래에서 시작
-                  animate={{ y: 0, opacity: 1 }}    // 제자리로
-                  exit={{ y: -20, opacity: 0 }}    // 위로 사라짐
+                  key={videoTitle}
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -20, opacity: 0 }}
                   transition={{ duration: 0.4, ease: "easeOut" }}
                   className="text-white font-bold text-sm truncate tracking-tight absolute w-full"
                 >
@@ -324,8 +416,9 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
             </div>
           </div>
 
+          {/* 컨트롤 버튼 영역 */}
           <div className="flex items-center gap-1.5 shrink-0 relative">
-            {/* 볼륨 버튼 */}
+            {/* 공통: 볼륨 버튼 */}
             <div
               onMouseEnter={() => setIsVolumeOpen(true)}
               onMouseLeave={() => setIsVolumeOpen(false)}
@@ -346,38 +439,44 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
                         value={volume}
                         onChange={handleVolumeChange}
                         className="h-24 w-1.5 appearance-none bg-white/10 rounded-full accent-green-500 cursor-pointer"
-                        style={{
-                          writingMode: 'vertical-lr', // 수직 방향 설정
-                          direction: 'rtl'            // 아래가 0, 위가 100이 되도록 방향 조절
-                        }}
+                        style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
                       />
                       <span className="text-[9px] font-mono text-white/40">{volume}</span>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
-              <button
-                className={`p-2 rounded-xl transition-all ${isVolumeOpen ? 'bg-white/10 text-green-400' : 'text-white/30 hover:text-green-400 hover:bg-white/5'}`}
-              >
+              <button className={`p-2 rounded-xl transition-all ${isVolumeOpen ? 'bg-white/10 text-green-400' : 'text-white/30 hover:text-green-400 hover:bg-white/5'}`}>
                 {getVolumeIcon()}
               </button>
             </div>
 
-
-            <button onClick={handleSkip} className="p-2 text-white/30 hover:text-green-400 hover:bg-white/5 rounded-xl transition-all">
-              <SkipForward size={18} />
-            </button>
-
-            <button onClick={handlePasteAndPlay} className="p-2 text-white/30 hover:text-red-500 hover:bg-white/5 rounded-xl transition-all">
-              <Play size={18} fill={videoUrl !== "first" ? "currentColor" : "none"} />
-            </button>
-            <button onClick={() => setIsListOpen(!isListOpen)} className={`p-2 rounded-xl transition-all ${isListOpen ? 'bg-green-500/10 text-green-400' : 'text-white/30 hover:text-green-400'}`}>
-              <ListMusic size={20} />
-            </button>
+            {/* 조건부 버튼 렌더링 */}
+            {isOwner ? (
+              <>
+                {/* 방장용 컨트롤 */}
+                <button onClick={handleSkip} className="p-2 text-white/30 hover:text-green-400 hover:bg-white/5 rounded-xl transition-all">
+                  <SkipForward size={18} />
+                </button>
+                <button onClick={handlePasteAndPlay} className="p-2 text-white/30 hover:text-red-500 hover:bg-white/5 rounded-xl transition-all">
+                  <Play size={18} fill={videoUrl !== "first" ? "currentColor" : "none"} />
+                </button>
+                <button onClick={() => setIsListOpen(!isListOpen)} className={`p-2 rounded-xl transition-all ${isListOpen ? 'bg-green-500/10 text-green-400' : 'text-white/30 hover:text-green-400'}`}>
+                  <ListMusic size={20} />
+                </button>
+              </>
+            ) : (
+              /* 참여자용: 방 나가기 버튼 */
+              <>
+                <button onClick={handleLeaveRoom} className="p-2 text-white/30 hover:text-green-400 hover:bg-white/5 rounded-xl transition-all">
+                  <LogOut size={18} />
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* 재생바 및 반복 버튼 영역 */}
+        {/* 재생바 영역 */}
         {videoUrl !== "first" && (
           <div className="space-y-2">
             <div className="flex items-center gap-3">
@@ -387,14 +486,17 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
                   style={{ width: `${progressPercent}%` }}
                 ></div>
               </div>
-              {/* 반복 재생 토글 버튼 */}
-              <button
-                onClick={() => setIsRepeat(!isRepeat)}
-                className={`transition-colors ${isRepeat ? 'text-green-400' : 'text-white/20 hover:text-white'}`}
-                title={isRepeat ? "Repeat ON" : "Repeat OFF"}
-              >
-                {isRepeat ? <Repeat1 size={14} /> : <Repeat size={14} />}
-              </button>
+
+              {/* 반복 재생 버튼: 방장만 조작 가능하게 하거나, 참여자는 단순히 상태만 보게 처리 */}
+              {isOwner && (
+                <button
+                  onClick={() => setIsRepeat(!isRepeat)}
+                  className={`transition-colors ${isRepeat ? 'text-green-400' : 'text-white/20 hover:text-white'}`}
+                  title={isRepeat ? "Repeat ON" : "Repeat OFF"}
+                >
+                  {isRepeat ? <Repeat1 size={14} /> : <Repeat size={14} />}
+                </button>
+              )}
             </div>
             <div className="flex justify-between text-[9px] font-mono text-white/20 tracking-widest font-bold">
               <span>{formatTime(currentTime)}</span>
@@ -406,5 +508,4 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
     </div>
   );
 };
-
 export default YouTubePlayer;

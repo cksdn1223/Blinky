@@ -105,13 +105,9 @@ export type SocialState = {
     FOLLOWER: SearchUser[];
   };
   isLoading: boolean;
-  // Presence (실시간 데이터)
-  friendStatus: Record<string, FriendStatus>;
   fetchFriendsList: (tab: "FOLLOWING" | "FOLLOWER") => Promise<void>;
   addFollowingToList: (user: SearchUser) => void;
   removeUserFromList: (email: string, tab: "FOLLOWING" | "FOLLOWER") => void;
-  updateFriendStatus: (email: string, newData: Partial<FriendStatus>) => void;
-  removeFriendFromShare: (email: string) => void;
   clearSocialData: () => void;
 }
 
@@ -128,3 +124,25 @@ export type propTypes = {
   setIsSettingsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isSettingsOpen: boolean;
 };
+
+export type MusicState = {
+  // 현재 방의 음악 상태
+  currentRoomMusic: {
+    videoId: string;
+    isPlaying: boolean;
+    progressMs: number;
+    ownerEmail: string;
+  } | null;
+
+  // 서버에서 받은 데이터를 스토어에 업데이트
+  syncMusic: (data: { videoId: string; playing: boolean; progressMs: number; ownerEmail: string }) => void;
+  
+  // 방에서 나갈 때 초기화
+  resetRoomMusic: () => void;
+}
+
+export type RoomState = {
+  currentRoomOwnerEmail: string | null; // null이면 내 대시보드, 값이 있으면 친구 대시보드
+  setRoom: (email: string | null) => void;
+  leaveRoom: () => void;
+}

@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
-import { Heart, HeartHandshake, X, UserCheck, UserPlus } from "lucide-react";
+import { Heart, HeartHandshake, X, UserCheck, UserPlus, LogIn } from "lucide-react";
 import { useState } from "react";
-import { blockFollower, toggleFollow } from "../api/api";
+import { blockFollower, joinRoom, toggleFollow } from "../api/api";
 import { SearchUser } from "../types";
-import { useSocialStore } from "../store/store";
+import { useRoomStore, useSocialStore } from "../store/store";
 
 // 사용자 아이템 컴포넌트
 function UserItem({
@@ -20,6 +20,7 @@ function UserItem({
   onActionSuccess: (email: string) => void;
 }) {
   const { addFollowingToList, removeUserFromList } = useSocialStore();
+  const { setRoom } = useRoomStore();
 
   const [localIsFollowing, setLocalIsFollowing] = useState(user.isFollowing);
   const [isPending, setIsPending] = useState(false);
@@ -74,6 +75,15 @@ function UserItem({
     }
   };
 
+  const handleJoin = async (email: string) => {
+    try {
+      await joinRoom(email);
+      setRoom(email);
+    } catch (error) {
+      console.error("방 입장 실패: ", error);
+    }
+  }
+
   const getHappinessColor = (val: number) => {
     if (val > 5000) return "text-yellow-400 border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]";
     if (val > 1000) return "text-purple-400 border-purple-500/50";
@@ -116,12 +126,18 @@ function UserItem({
             </div>
           </div>
         </div>
-
+        {isOnline && activeTab === `FOLLOWING` &&
+          <button
+            onClick={() => handleJoin(user.email)}
+            className="p-2 ml-0.5 rounded-xl transition-all outline-none focus:outline-none text-blue-400 hover:text-blue-300"
+          >
+            <LogIn size={18} />
+          </button>}
         {/* 액션 버튼 */}
         <button
           disabled={isPending}
           onClick={() => handleAction(user.email)}
-          className={`p-2.5 rounded-xl transition-all outline-none focus:outline-none ${!isSearch && activeTab === 'FOLLOWER'
+          className={`p-2 rounded-xl transition-all outline-none focus:outline-none ${!isSearch && activeTab === 'FOLLOWER'
             ? "text-red-500/40 hover:text-red-500 hover:bg-red-500/10"
             : localIsFollowing
               ? "text-blue-400 hover:text-blue-300"

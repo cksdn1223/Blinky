@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware';
-import { AuthState, SearchUser, SessionState, SocialState, UIState, UserState } from '../types';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import { AuthState, MusicState, RoomState, SearchUser, SessionState, SocialState, UIState, UserState } from '../types';
 import { getFollowers, getFollowings, getUserStats } from '../api/api';
 
 export const useAuthStore = create<AuthState>()(
@@ -103,8 +103,6 @@ export const useSocialStore = create<SocialState>((set) => ({
     FOLLOWER: []
   },
   isLoading: false,
-  friendStatus: {},
-
   // Social
   fetchFriendsList: async (tab: "FOLLOWING" | "FOLLOWER") => {
     set({ isLoading: true });
@@ -136,36 +134,43 @@ export const useSocialStore = create<SocialState>((set) => ({
       [tab]: state.lists[tab].filter(u => u.email !== email)
     }
   })),
-
-  // 음악 공유 //
-  // 실시간 공유 업데이트 (SSE 수신 시 사용)
-  updateFriendStatus: (email, newData) => set((state) => ({
-    friendStatus: {
-      ...state.friendStatus,
-      [email]: {
-        ...(state.friendStatus[email] || {
-          email,
-          nickname: 'Loading...',
-          music: null,
-          pet: { nickname: 'Blinky', status: 'idle', x: 0, y: 0 },
-          lastSeen: Date.now()
-        }),
-        ...newData,
-        lastSeen: Date.now()
-      }
-    }
-  })),
-
-  // 실시간 공유 목록에서만 제거
-  removeFriendFromShare: (email) => set((state) => {
-    const newStatus = { ...state.friendStatus };
-    delete newStatus[email];
-    return { friendStatus: newStatus };
-  }),
-
   /* --- 공통 초기화 --- */
   clearSocialData: () => set({
-    friendStatus: {},
     lists: { FOLLOWING: [], FOLLOWER: [] }
   })
 }));
+
+export const useMusicStore = create<MusicState>()(
+  persist(
+    (set) => ({
+      currentRoomMusic: null,
+      syncMusic: (data) => set({
+        currentRoomMusic: {
+          videoId: data.videoId,
+          isPlaying: data.playing,
+          progressMs: data.progressMs,
+          ownerEmail: data.ownerEmail
+        }
+      }),
+      resetRoomMusic: () => set({ currentRoomMusic: null })
+    }),
+    {
+      name: 'music-storage',
+      storage: createJSONStorage(() => localStorage),
+    }
+  )
+);
+
+export const useRoomStore = create<RoomState>()(
+  persist(
+    (set) => ({
+      currentRoomOwnerEmail: null,
+      setRoom: (email) => set({ currentRoomOwnerEmail: email }),
+      leaveRoom: () => set({ currentRoomOwnerEmail: null }),
+    }),
+    {
+      name: 'room-storage', // localStorage에 저장될 키 이름
+      storage: createJSONStorage(() => localStorage), // (선택 사항) 기본값이 localStorage입니다.
+    }
+  )
+);

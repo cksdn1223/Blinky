@@ -85,3 +85,23 @@ export const getFollowers = async () => {
   const response = await api.get('/api/user/follower');
   return response.data;
 }
+
+export const joinRoom = async (email: string) => {
+  const response = await api.post(`/api/room/join/${email}`);
+  return response;
+}
+
+export const leaveRoom = async () => {
+  const response = await api.post('/api/room/leave');
+  return response;
+}
+
+export const shareMusic = async (ownerEmail:string, data:{videoId:string, isPlaying:boolean, progressMs:number}) => {
+  const response = await api.post(`/api/share/${ownerEmail}`, {
+    videoId: data.videoId,
+    playing: data.isPlaying,
+    progressMs: data.progressMs,
+    ownerEmail: ownerEmail
+  })
+  return response;
+}

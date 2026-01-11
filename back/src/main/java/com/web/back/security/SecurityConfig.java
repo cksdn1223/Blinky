@@ -45,7 +45,10 @@ public class SecurityConfig {
                                 "/api-docs/**",
                                 "/oauth2/**",
                                 "/login/oauth2/**",
-                                "/ws-stomp/**"
+                                "/ws-stomp/**",
+                                "/api/room/**",
+                                "/api/share/**",
+                                "/api/connect/**"
                         ).permitAll()
                         // 나머지 모든 요청은 인증 필요
                         .anyRequest().authenticated()
