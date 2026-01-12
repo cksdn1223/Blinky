@@ -92,6 +92,7 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
     } finally {
       exitRoomStore();
       useMusicStore.getState().resetRoomMusic();
+      console.log("현재 타이틀:", videoTitle)
       setVideoUrl("first");
       setVideoTitle("YOUTUBE 링크를 복사 후 재생버튼을 눌러주세요.");
     }

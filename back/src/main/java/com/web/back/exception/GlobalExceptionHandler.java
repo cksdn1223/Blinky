@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
 import java.time.LocalDateTime;
 
@@ -69,7 +70,7 @@ public class GlobalExceptionHandler {
     }
 
 
-    @ExceptionHandler(org.springframework.web.context.request.async.AsyncRequestTimeoutException.class)
+    @ExceptionHandler(AsyncRequestTimeoutException.class)
     public ResponseEntity<Void> handleAsyncTimeout() {
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }

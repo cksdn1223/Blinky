@@ -61,11 +61,20 @@ export const useSse = () => {
     });
 
     // 에러 및 재연결 로직
-    es.onerror = (error) => {
+    es.onerror = (error: EventSourceError) => {
       console.error('❌ SSE Error:', error);
+
+      if (error?.status === 401 || error?.error?.statusCode === 401) {
+        console.log("🔒 토큰 만료됨 -> 재로그인 필요");
+        es.close();
+        useAuthStore.getState().logout();
+        return;
+      }
+
       es.close();
-      // 재연결 시도
-      if (useRoomStore.getState().currentRoomOwnerEmail) {
+
+      // 일반적인 끊김이면 재연결 시도
+      if (useAuthStore.getState().token) {
         console.log('3초 후 SSE 재연결 시도');
         setTimeout(() => {
           setReconnectCount(prev => prev + 1);
@@ -81,3 +90,12 @@ export const useSse = () => {
     };
   }, [email, token, reconnectCount]);
 };
+
+interface EventSourceError extends Event {
+  status?: number;
+  message?: string;
+  error?: {
+    statusCode?: number;
+    message?: string;
+  };
+}

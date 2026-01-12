@@ -24,7 +24,7 @@ public class SseService {
     private final RoomService roomService;
 
     public SseEmitter subscribe(String email) {
-        SseEmitter emitter = new SseEmitter(10 * 60 * 1000L);
+        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
         emitters.put(email, emitter);
 
         redisTemplate.opsForValue().set("status:" + email, "online", 45, TimeUnit.SECONDS);
