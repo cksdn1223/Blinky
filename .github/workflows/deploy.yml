@@ -23,6 +23,12 @@ jobs:
           java-version: "17"
           distribution: "temurin"
 
+      - name: application.yml 파일 생성 (시크릿 주입)
+        run: |
+          mkdir -p back/src/main/resources
+          cd back/src/main/resources
+          echo "${{ secrets.BACKEND_CONFIG_FILE }}" > application.yml
+
       - name: Gradle 권한 부여
         run: chmod +x gradlew
 
@@ -57,20 +63,43 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Docker 메타데이터 추출
-        id: meta
+      - name: 백엔드 메타데이터 추출
+        id: meta-back
         uses: docker/metadata-action@v5
         with:
           images: ${{ secrets.DOCKER_USERNAME }}/blinky-backend
           tags: |
-            type=sha
             type=raw,value=latest
+            type=sha
 
-      - name: Docker 빌드 및 푸시
+      - name: 백엔드 Docker 빌드 및 푸시
         uses: docker/build-push-action@v5
         with:
           context: ./back
           file: ./back/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta-back.outputs.tags }}
+          labels: ${{ steps.meta-back.outputs.labels }}
+
+      - name: 프론트엔드 .env 파일 생성 (시크릿 주입)
+        run: |
+          cd front
+          echo "${{ secrets.FRONTEND_CONFIG_FILE }}" > .env
+
+      - name: 프론트엔드 메타데이터 추출
+        id: meta-front
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_USERNAME }}/blinky-frontend
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: 프론트엔드 Docker 빌드 및 푸시
+        uses: docker/build-push-action@v5
+        with:
+          context: ./front
+          file: ./front/Dockerfile
+          push: true
+          tags: ${{ steps.meta-front.outputs.tags }}
+          labels: ${{ steps.meta-front.outputs.labels }}
