@@ -25,8 +25,8 @@ jobs:
 
       - name: application.properties 파일 생성 (시크릿 주입)
         run: |
-          mkdir -p back/src/main/resources
-          cd back/src/main/resources
+          mkdir -p src/main/resources
+          cd src/main/resources
           echo "${{ secrets.BACKEND_CONFIG_FILE }}" > application.properties
 
       - name: Gradle 권한 부여
