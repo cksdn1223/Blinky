@@ -61,10 +61,10 @@ export const searchUser = async (nickname: string) => {
 
 export const toggleFollow = async (email: string) => {
   await api.post('/api/friend', null, {
-      params: {
-        email: email
-      }
+    params: {
+      email: email
     }
+  }
   )
 }
 
@@ -96,7 +96,7 @@ export const leaveRoom = async () => {
   return response;
 }
 
-export const shareMusic = async (ownerEmail:string, data:{videoId:string, isPlaying:boolean, progressMs:number}) => {
+export const shareMusic = async (ownerEmail: string, data: { videoId: string | null, isPlaying: boolean, progressMs: number }) => {
   const response = await api.post(`/api/share/${ownerEmail}`, {
     videoId: data.videoId,
     playing: data.isPlaying,

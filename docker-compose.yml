@@ -1,0 +1,61 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./back
+    container_name: blinky-back
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mariadb://mariadb:3306/blinky?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      # 필요한 경우 추가 환경 변수 설정
+    depends_on:
+      - mariadb
+      - redis
+    networks:
+      - blinky-net
+    restart: always
+
+  frontend:
+    build: ./front
+    container_name: blinky-front
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - blinky-net
+    restart: always
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: blinky-db
+    environment:
+      - MARIADB_ROOT_PASSWORD=root
+      - MARIADB_DATABASE=blinky
+      - TZ=Asia/Seoul
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - blinky-net
+    restart: always
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  redis:
+    image: redis:alpine
+    container_name: blinky-redis
+    volumes:
+      - redis_data:/data
+    networks:
+      - blinky-net
+    restart: always
+
+networks:
+  blinky-net:
+    driver: bridge
+
+volumes:
+  mariadb_data:
+  redis_data:

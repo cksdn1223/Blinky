@@ -51,38 +51,48 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
     }
   }, [isOwner, userStats?.email]);
 
-  // 방장일 경우 주기적으로(3초마다) 재생 상태를 서버에 공유하여 참여자들과 시간 동기화 유지
+  // 방장일 경우 주기적으로 재생 상태를 서버에 공유하여 참여자들과 시간 동기화 유지
   useEffect(() => {
-    let syncInterval: ReturnType<typeof setInterval>;
+    if (!isOwner || !userStats?.email) return;
 
-    if (isOwner && userStats?.email) {
-      syncInterval = setInterval(async () => {
-        if (playerRef.current && typeof playerRef.current.getPlayerState === 'function') {
-          const currentVideoData = playerRef.current.getVideoData();
-          if (!currentVideoData || !currentVideoData.video_id) { return; }
+    if (videoUrl === "first") {
+      shareMusic(userStats.email, {
+        videoId: null,
+        isPlaying: false,
+        progressMs: 0
+      }).catch(err => console.error("초기화 정보 전송 실패", err));
 
-          const playerState = playerRef.current.getPlayerState();
-          const currentTime = playerRef.current.getCurrentTime();
-
-          const isPlayingNow = playerState === window.YT.PlayerState.PLAYING;
-          const videoData = {
-            videoId: playerRef.current.getVideoData().video_id,
-            isPlaying: isPlayingNow,
-            progressMs: Math.floor(currentTime * 1000),
-          };
-          try {
-            await shareMusic(userStats.email, videoData);
-          } catch (err) {
-            console.error("Sync error:", err);
-          }
-        }
-      }, 3000);
+      return;
     }
 
-    return () => {
-      if (syncInterval) clearInterval(syncInterval);
-    };
-  }, [isOwner, userStats?.email]);
+    const syncInterval = setInterval(async () => {
+      if (playerRef.current && typeof playerRef.current.getPlayerState === 'function') {
+        const currentVideoData = playerRef.current.getVideoData();
+
+        // 영상 데이터가 로딩되지 않았으면 패스
+        if (!currentVideoData || !currentVideoData.video_id) return;
+
+        const playerState = playerRef.current.getPlayerState();
+        const currentTime = playerRef.current.getCurrentTime();
+        const isPlayingNow = playerState === window.YT.PlayerState.PLAYING;
+
+        const videoData = {
+          videoId: currentVideoData.video_id,
+          isPlaying: isPlayingNow,
+          progressMs: Math.floor(currentTime * 1000),
+        };
+
+        try {
+          await shareMusic(userStats.email, videoData);
+        } catch (err) {
+          console.error("Sync error:", err);
+        }
+      }
+    }, 3000);
+
+    return () => clearInterval(syncInterval);
+
+  }, [isOwner, userStats?.email, videoUrl]);
 
   const handleLeaveRoom = async () => {
     try {
@@ -92,9 +102,11 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
     } finally {
       exitRoomStore();
       useMusicStore.getState().resetRoomMusic();
-      console.log("현재 타이틀:", videoTitle)
       setVideoUrl("first");
       setVideoTitle("YOUTUBE 링크를 복사 후 재생버튼을 눌러주세요.");
+      setCurrentTime(0);
+      setDuration(0);
+      setIsPlaying?.(false);
     }
   }
 
@@ -123,6 +135,16 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
     // 내가 참여자이고, 동기화 데이터가 있고, 플레이어 객체가 준비되었을 때
     if (!isOwner && currentRoomMusic) {
       const { videoId, isPlaying, progressMs } = currentRoomMusic;
+
+      if (!videoId) {
+        if (videoUrl !== "first") {
+          setVideoUrl("first");
+          setVideoTitle("YOUTUBE 링크를 복사 후 재생버튼을 눌러주세요.");
+          setCurrentTime(0);
+          setDuration(0);
+        }
+        return;
+      }
 
       // (1) 영상 ID가 다르면 새로운 영상 로드
       const currentVideoId = getYoutubeId(videoUrl);
@@ -266,13 +288,20 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
   useEffect(() => {
     const videoId = getYoutubeId(videoUrl);
     let interval: ReturnType<typeof setInterval>;
+    let ignore = false;
 
     // 영상 제목 가져오기 (oEmbed API)
     if (videoId && videoUrl !== "first") {
       fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
         .then(res => res.json())
-        .then(data => setVideoTitle(data.title))
-        .catch(() => setVideoTitle("재생 중인 음악"));
+        .then(data => {
+          if (!ignore) setVideoTitle(data.title);
+        })
+        .catch(() => {
+          if (!ignore) setVideoTitle("재생 중인 음악");
+        });
+    } else {
+      setVideoTitle("YOUTUBE 링크를 복사 후 재생버튼을 눌러주세요.");
     }
 
     const createPlayer = () => {
@@ -365,10 +394,14 @@ const YouTubePlayer = ({ className, setIsPlaying, onVideoChange }: YouTubePlayer
           clearInterval(checkYT);
         }
       }, 100);
-      return () => clearInterval(checkYT);
+      return () => {
+        ignore = true;
+        clearInterval(checkYT)
+      };
     }
 
     return () => {
+      ignore = true;
       if (playerRef.current) playerRef.current.destroy();
       clearInterval(interval);
     };

@@ -17,7 +17,7 @@ public class RoomService {
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
 
-    private static final int MAX_PARTICIPANTS = 10;
+    public static final int MAX_PARTICIPANTS = 10;
 
     public boolean joinRoom(String ownerEmail, String guestEmail) {
         String roomKey = "room:" + ownerEmail;

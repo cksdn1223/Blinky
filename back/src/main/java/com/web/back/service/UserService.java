@@ -1,9 +1,11 @@
 package com.web.back.service;
 
+import com.web.back.dto.share.MusicDto;
 import com.web.back.dto.user.UserSearchResponseDto;
 import com.web.back.entity.User;
 import com.web.back.enums.FriendStatus;
 import com.web.back.repository.UserRepository;
+import com.web.back.service.room.RoomService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -19,6 +22,7 @@ import java.util.UUID;
 public class UserService {
     private final UserRepository userRepository;
     private final StringRedisTemplate redisTemplate;
+    private final RoomService roomService;
 
     @Transactional
     public void changeNickname(String nickname, Principal principal) {
@@ -50,6 +54,8 @@ public class UserService {
                         u.getPet().getName(),
                         u.getPet().getCalculatedHappiness(),
                         u.getPet().getCalculatedBoredom(),
+                        redisTemplate.hasKey("status:" + u.getEmail()),
+                        false,
                         false
                 ))
                 .toList();
@@ -66,6 +72,19 @@ public class UserService {
                     User target = f.getFollowing();
                     // Redis에서 온라인상태 확인
                     boolean isOnline = redisTemplate.hasKey("status:" + target.getEmail());
+
+                    boolean isMusicPlaying = false;
+                    boolean isRoomFull = false;
+
+                    if (isOnline) {
+                        MusicDto music = roomService.getRoomCurrentMusic(target.getEmail());
+                        isMusicPlaying = (music != null && music.getVideoId() != null);
+
+                        Set<String> participants = roomService.getParticipants(target.getEmail());
+                        int memberCount = (participants != null) ? participants.size() : 0;
+                        isRoomFull = memberCount >= RoomService.MAX_PARTICIPANTS;
+                    }
+
                     return new UserSearchResponseDto(
                             target.getNickname(),
                             target.getEmail(),
@@ -74,7 +93,9 @@ public class UserService {
                             target.getPet().getName(),
                             target.getPet().getCalculatedHappiness(),
                             target.getPet().getCalculatedBoredom(),
-                            isOnline
+                            isOnline,
+                            isMusicPlaying,
+                            isRoomFull
                     );
                 })
                 .toList();
@@ -90,6 +111,7 @@ public class UserService {
                 .map(f -> {
                     User target = f.getFollower();
                     boolean isOnline = redisTemplate.hasKey("status:" + target.getEmail());
+
                     return new UserSearchResponseDto(
                             target.getNickname(),
                             target.getEmail(),
@@ -98,7 +120,9 @@ public class UserService {
                             target.getPet().getName(),
                             target.getPet().getCalculatedHappiness(),
                             target.getPet().getCalculatedBoredom(),
-                            isOnline
+                            isOnline,
+                            false,
+                            false
                     );
                 })
                 .toList();

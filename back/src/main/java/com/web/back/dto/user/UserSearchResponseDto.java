@@ -8,6 +8,8 @@ public record UserSearchResponseDto(
         String petName,
         double petHappiness,
         double petBoredom,
-        boolean isOnline
+        boolean isOnline,
+        boolean isMusicPlaying,
+        boolean isRoomFull
 ) {
 }

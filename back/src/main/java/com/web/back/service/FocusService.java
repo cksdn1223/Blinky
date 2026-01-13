@@ -9,6 +9,7 @@ import com.web.back.repository.FocusLogRepository;
 import com.web.back.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.scheduling.annotation.Scheduled;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
 public class FocusService {
     private final FocusLogRepository focusLogRepository;
     private final UserRepository userRepository;
+    private static final int RETENTION_DAYS = 90;
 
 
     @Transactional
@@ -54,5 +56,16 @@ public class FocusService {
         pet.changeStatus(nextHappiness, finalBoredom);
 
         return new FocusResponseDto(user.getTotalFocusSec());
+    }
+
+    /**
+     * 오래된 집중 세션 로그를 주기적으로 삭제합니다. (매일 새벽 5시에 실행)
+     * 데이터가 무한정 쌓이는 것을 방지합니다.
+     */
+    @Scheduled(cron = "0 0 5 * * ?")
+    @Transactional
+    public void cleanupOldFocusLogs() {
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(RETENTION_DAYS);
+        focusLogRepository.deleteByEndAtBefore(cutoffDate);
     }
 }

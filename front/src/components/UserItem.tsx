@@ -28,6 +28,11 @@ function UserItem({
   const happiness = isNaN(user.petHappiness) ? 0 : Math.floor(user.petHappiness);
   const boredom = isNaN(user.petBoredom) ? 0 : Math.min(100, Math.floor(user.petBoredom));
 
+  const canJoin = isOnline &&
+    activeTab === 'FOLLOWING' &&
+    user.isMusicPlaying &&
+    !user.isRoomFull;
+
   const handleAction = async (email: string) => {
     if (isPending) return;
 
@@ -133,7 +138,7 @@ function UserItem({
             </div>
           </div>
         </div>
-        {isOnline && activeTab === `FOLLOWING` &&
+        {isOnline && activeTab === `FOLLOWING` && canJoin &&
           <button
             onClick={() => handleJoin(user.email, user.nickname)}
             className="p-2 ml-0.5 rounded-xl transition-all outline-none focus:outline-none text-blue-400 hover:text-blue-300"

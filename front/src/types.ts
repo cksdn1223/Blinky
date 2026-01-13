@@ -56,6 +56,8 @@ export type SearchUser = {
   petHappiness: number;
   petBoredom: number;
   isOnline: boolean;
+  isMusicPlaying?: boolean;
+  isRoomFull?: boolean;
 };
 
 export type SessionState = {
@@ -136,7 +138,7 @@ export type MusicState = {
 
   // 서버에서 받은 데이터를 스토어에 업데이트
   syncMusic: (data: { videoId: string; playing: boolean; progressMs: number; ownerEmail: string }) => void;
-  
+
   // 방에서 나갈 때 초기화
   resetRoomMusic: () => void;
 }
