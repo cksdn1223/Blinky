@@ -1,36 +1,26 @@
-# 주요 컴포넌트 (Key Components)
+# 주요 UI 컴포넌트
 
-## 📺 YoutubePlayer (`components/YoutubePlayer.tsx`)
+## 1. PetCanvas (`components/PetCanvas.tsx`)
 
-유튜브 영상을 배경 음악으로 재생하는 컴포넌트입니다.
-
-- `react-player` 라이브러리를 래핑.
+- **기술**: HTML5 Canvas API + `requestAnimationFrame`.
 - **기능**:
-  - `onVideoChange`: 영상 ID가 변경될 때 상위 컴포넌트에 알림 (집중 세션에 기록).
-  - `setIsPlaying`: 재생/일시정지 상태 동기화.
+  - 스프라이트 이미지(`cat-sprite.png`)를 로드하여 프레임 단위로 애니메이션 렌더링.
+  - **상태 반영**: `idle`, `walk`, `run`, `sleep`, `pounce` 등 상태 문자열에 따라 다른 스프라이트 행(Row)을 참조.
+  - **마우스 상호작용**: 마우스 오버 시 픽셀 데이터를 분석(`getImageData`)하여 고양이 위에 있는지 감지하고, 클릭 이벤트를 처리.
 
-## 🐱 PetCanvas (`components/PetCanvas.tsx`)
+## 2. YouTubePlayer (`components/YoutubePlayer.tsx`)
 
-펫(Blinky)을 캔버스(Canvas)에 렌더링하고 애니메이션을 처리합니다.
+- **기술**: YouTube IFrame API (native `window.YT.Player`).
+- **기능**:
+  - **재생/일시정지 동기화**: 방장(`isOwner`)의 조작에 따라 참여자들의 플레이어 상태를 동기화.
+  - **시간 동기화**: 서버(Redis) 및 방장의 진행 시간(`progressMs`)과 참여자의 시간을 주기적으로(`setInterval`) 비교하여 2초 이상 차이날 경우 `seekTo` 수행.
+  - **플레이리스트**: 클립보드에서 유튜브 URL을 감지하여 목록에 추가.
 
-- **인터랙션**: 클릭 시 `onPetClick` 콜백 호출 (쓰다듬기).
-- **상태 시각화**: `status` prop(`sleep`, `happy`, `bored` 등)에 따라 다른 스프라이트나 애니메이션을 보여줍니다.
+## 3. SocialPanel (`components/SocialPanel.tsx`)
 
-## ⏲️ Clock (`components/Clock.tsx`)
+- **기능**: 팔로잉/팔로워 목록을 탭으로 구분하여 표시.
+- **실시간 상태**: 친구의 펫 상태나 접속 여부 등을 `UserItem` 컴포넌트를 통해 표시.
 
-현재 시간을 보여주는 심플한 시계 컴포넌트입니다.
+## 4. Equalizer (`components/Equalizer.tsx`)
 
-## ⚙️ SettingPanel (`components/SettingPanel.tsx`)
-
-사용자 설정을 변경하는 패널입니다.
-
-- 닉네임 변경 (User, Pet).
-- 오버레이 형태로 표시되며 `useUIStore`로 열림 상태를 제어합니다.
-
-## 👥 SocialPanel (`components/SocialPanel.tsx`)
-
-소셜 기능을 담당하는 패널입니다.
-
-- **탭 구분**: 팔로잉(Following) / 팔로워(Follower) 목록 전환.
-- **친구 검색**: 닉네임으로 유저 검색 후 팔로우/언팔로우.
-- **상태 표시**: 친구의 펫 상태나 현재 듣고 있는 음악 여부 표시.
+- **기능**: 음악 재생(`isPlaying`) 상태에 따라 막대들이 움직이는 CSS/JS 애니메이션 시각화.

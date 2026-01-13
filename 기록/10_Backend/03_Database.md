@@ -1,75 +1,80 @@
-# 데이터베이스 스키마 (Database Schema)
+# 데이터베이스 스키마
 
-## 📊 ER 다이어그램 (ER Diagram)
+## 1. ER Diagram (Logic)
 
 ```mermaid
 erDiagram
-    Users ||--|| Pet : "Has (1:1)"
-    Users ||--o{ FocusLog : "Records"
-    Users ||--o{ Friend : "Follows/Blocks"
+    USERS ||--|| PETS : "owns"
+    USERS ||--o{ FOCUS_LOGS : "records"
+    USERS ||--o{ FRIENDS : "follows"
+    USERS ||--o{ FRIENDS : "followed by"
 
-    Users {
+    USERS {
         UUID id PK
-        String email UK
-        String nickname
-        Long total_focus_sec
-        String role
-        LocalDateTime created_at
+        string email UK
+        string nickname
+        long total_focus_sec
+        enum role "USER | ADMIN"
+        datetime created_at
     }
 
-    Pet {
-        Long id PK
-        Long user_id FK
-        String name
-        Double happiness
-        Double boredom
-        LocalDateTime last_updated
+    PETS {
+        long id PK
+        uuid user_id FK
+        string name
+        double happiness
+        double boredom
+        datetime last_updated
     }
 
-    FocusLog {
-        Long id PK
-        UUID user_id FK
-        LocalDateTime start_time
-        LocalDateTime end_time
-        Long focus_duration
-        String video_ids "JSON or CSV"
+    FOCUS_LOGS {
+        long id PK
+        uuid user_id FK
+        datetime start_at
+        datetime end_at
+        list video_ids
     }
 
-    Friend {
-        Long id PK
-        UUID follower_id FK
-        UUID following_id FK
-        String status "FOLLOW, BLOCK"
-        LocalDateTime created_at
+    FRIENDS {
+        long id PK
+        uuid follower_id FK
+        uuid following_id FK
+        enum status "FOLLOW | BLOCK"
+        datetime created_at
     }
 ```
 
-## 📝 엔티티 상세 (Entity Details)
+## 2. Table Details
 
-### 1. User (사용자)
+### Users (`users`)
 
 - **id**: UUID, Primary Key.
-- **email**: 사용자 이메일 (로그인 ID).
-- **total_focus_sec**: 총 집중 시간 누적 (초 단위).
-- **pet**: 1:1 관계의 펫 엔티티.
-- **focusLog**: 자신의 집중 기록 리스트.
-- **followingList / followerList**: 친구 관계 리스트.
+- **email**: 사용자 이메일 (Unique, Not Null).
+- **nickname**: 닉네임 (Not Null).
+- **total_focus_sec**: 누적 집중 시간 (초 단위, Default 0).
+- **role**: 사용자 권한 (`USER`, `ADMIN`).
+- **created_at**: 가입 일시.
 
-### 2. Pet (펫)
+### Pets (`pet`)
 
-- **user**: 주인(User).
-- **happiness**: 행복도 (0~100). 시간이 지나면 자동 감소.
-- **boredom**: 심심함 (0~100). 시간이 지나면 자동 증가.
-- **Methods**: `getCalculatedBoredom()`, `getCalculatedHappiness()` - 시간 경과에 따른 상태를 실시간으로 계산.
+- **id**: Long (Auto Increment), PK.
+- **user_id**: 외래키 (User), 1:1 관계.
+- **name**: 펫 이름.
+- **happiness**: 행복도 수치.
+- **boredom**: 심심함 수치.
+- **last_updated**: 마지막 상태 변경 시간 (상태 계산용).
 
-### 3. Friend (친구 관계)
+### FocusLogs (`focus_log`)
 
-- **follower**: 팔로우를 건 사람.
-- **following**: 팔로우를 받은 사람.
+- **id**: Long, PK.
+- **user_id**: 외래키 (User).
+- **start_at / end_at**: 집중 시작/종료 시간.
+- **video_ids**: 시청한 비디오 ID 목록 (별도 컬렉션 테이블 `focus_log_videos`에 저장).
+
+### Friends (`friends`)
+
+- **id**: Long, PK.
+- **follower_id**: 팔로우 하는 유저.
+- **following_id**: 팔로우 받는 유저.
 - **status**: 관계 상태 (`FOLLOW`, `BLOCK`).
-
-### 4. FocusLog (집중 기록)
-
-- **start_time / end_time**: 세션 시작/종료 시각.
-- **focus_duration**: 실제 집중 시간 (초). `end - start`와 다를 수 있음 (일시정지 등 고려 시).
-- **video_ids**: 해당 세션에서 시청한 영상 ID 목록.
+- **Constraint**: `follower_id`와 `following_id` 조합은 유니크해야 함.

@@ -1,37 +1,16 @@
 # 데이터베이스 설계
-핵심은 유저, 펫, 활동로그
 
-주요 테이블
-Users, Pets, FocusLogs, Friends
+> **상세 스키마 문서는 [[10_Backend/03_Database]]를 참고하세요.**
 
-## Users
-- Id 유저 고유 식별자
-- email 로그인용 이메일
-- nickname 서비스 내 활동 이름
-- total_focus_sec 전체 누적 집중 시간(초)
-- created_at 가입 일시
+## 핵심 엔티티
 
-## Pets
-유저와 1대1 관계
-- Id 펫 고유 ID
-- user_id 주인 유저 ID
-- name 펫 이름
-- happiness 행복도
-- boredom 심심함 지수 0~100
+1. **User**: 사용자 정보 (UUID 식별자).
+2. **Pet**: 사용자와 1:1로 매칭되는 펫 정보 (행복도/심심함 상태).
+3. **FocusLog**: 사용자의 집중 시간 기록 (비디오 목록 포함).
+4. **Friend**: 사용자 간의 팔로우/차단 관계 (다대다 해소).
 
-## FocusLogs 
-세션이 종료될때마다 기록
-- Id 로그 고유 번호
-- user_id 기록 주체 유저
-- start_at 세션 시작 시간
-- end_at 세션 종료 시간
-- video_ids 들었던 유튜브 영상 ID (여러개)
+## 주요 관계
 
-## Friend
-소셜 기능을 위한 다대다 관계 테이블
-- id 관계 ID
-- follower_id 팔로우를 누른 유저
-- following_id 팔로우 대상 유저
-- status 관계 상태(active, blocked ...)
-- created_at 관계 생성 일시
-
+- **User - Pet**: 1:1
+- **User - FocusLog**: 1:N
+- **User - User (Friend)**: N:M (Self Join 형태의 중간 테이블 `friends` 사용)

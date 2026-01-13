@@ -47,23 +47,24 @@ graph TD
 
 ### Backend (Server)
 
-| 구분           | 기술                     | 버전/설명                        |
-| :------------- | :----------------------- | :------------------------------- |
-| **Language**   | Java                     | 17                               |
-| **Framework**  | Spring Boot              | 3.5.9                            |
-| **Build Tool** | Gradle                   |                                  |
-| **Database**   | MariaDB                  | Data JPA 사용                    |
-| **Cache**      | Redis                    | `spring-boot-starter-data-redis` |
-| **Security**   | Spring Security          | JWT, OAuth2 (Google)             |
-| **Real-time**  | SSE (Server-Sent Events) | `SseEmitter`                     |
-| **Docs**       | Swagger (SpringDoc)      | v2.8.13                          |
+| 구분           | 기술                     | 버전/설명            |
+| :------------- | :----------------------- | :------------------- |
+| **Language**   | Java                     | 17                   |
+| **Framework**  | Spring Boot              | 3.5.9                |
+| **Build Tool** | Gradle                   |                      |
+| **Package**    | `com.web.back`           | 기본 패키지 경로     |
+| **Database**   | MariaDB                  | 10.11 (Docker)       |
+| **Cache**      | Redis                    | Alpine (Docker)      |
+| **Security**   | Spring Security          | JWT, OAuth2 (Google) |
+| **Real-time**  | SSE (Server-Sent Events) | `SseEmitter`         |
+| **Docs**       | Swagger (SpringDoc)      | v2.8.13              |
 
 ### Frontend (Client)
 
 | 구분            | 기술          | 버전/설명                      |
 | :-------------- | :------------ | :----------------------------- |
 | **Language**    | TypeScript    | v5.0+                          |
-| **Framework**   | React         | v18, Vite 빌드                 |
+| **Framework**   | React         | v18.2, Vite v4.4               |
 | **Styling**     | Tailwind CSS  | v3.4                           |
 | **State Mgmt**  | Zustand       | v5.0 (Persist middleware 사용) |
 | **HTTP Client** | Axios         | v1.13                          |
