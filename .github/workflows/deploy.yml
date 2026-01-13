@@ -103,3 +103,25 @@ jobs:
           push: true
           tags: ${{ steps.meta-front.outputs.tags }}
           labels: ${{ steps.meta-front.outputs.labels }}
+
+  deploy-to-server:
+    needs: docker-push  # 도커 푸시가 다 끝나야 실행됨
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 서버에 SSH 접속 및 배포 실행
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SSH_PASSWORD }} # 비밀번호 사용 시
+          port: 22
+          script: |
+            # 배포 폴더로 이동
+            cd ~/blinky-deploy
+            # 최신 이미지 가져오기
+            docker compose pull
+            # 컨테이너 교체
+            docker compose up -d
+            # 안 쓰는 옛날 이미지 정리해서 용량 확보
+            docker image prune -f
