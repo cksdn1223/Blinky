@@ -23,11 +23,11 @@ jobs:
           java-version: "17"
           distribution: "temurin"
 
-      - name: application.yml 파일 생성 (시크릿 주입)
+      - name: application.properties 파일 생성 (시크릿 주입)
         run: |
           mkdir -p back/src/main/resources
           cd back/src/main/resources
-          echo "${{ secrets.BACKEND_CONFIG_FILE }}" > application.yml
+          echo "${{ secrets.BACKEND_CONFIG_FILE }}" > application.properties
 
       - name: Gradle 권한 부여
         run: chmod +x gradlew
