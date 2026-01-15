@@ -1,6 +1,7 @@
 package com.web.back.service;
 
 import com.web.back.dto.share.MusicDto;
+import com.web.back.dto.user.UserRankResponseDto;
 import com.web.back.dto.user.UserSearchResponseDto;
 import com.web.back.entity.User;
 import com.web.back.enums.FriendStatus;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -128,7 +130,28 @@ public class UserService {
                 .toList();
     }
 
+    public UserRankResponseDto getRanks(Principal principal) {
+        User currentUser = userRepository.findByEmail(principal.getName())
+                .orElseThrow(() -> new EntityNotFoundException("순위를 가져오는 과정에서 로그인중인 유저를 찾을 수 없습니다."));
+        List<User> top10Users = userRepository.findTop10ByOrderByTotalFocusSecDesc();
 
+        List<UserRankResponseDto.UserRankDto> top10Dto = new ArrayList<>();
+        for (int i = 0 ; i < top10Users.size() ; i++) {
+            User user = top10Users.get(i);
+            top10Dto.add(new UserRankResponseDto.UserRankDto(i + 1, user.getNickname(), user.getTotalFocusSec()));
+        }
+
+        long countHighers = userRepository.countByTotalFocusSecGreaterThan(currentUser.getTotalFocusSec());
+        int myRankNum = (int) countHighers + 1;
+
+        UserRankResponseDto.UserRankDto myRankDto = new UserRankResponseDto.UserRankDto(
+                myRankNum,
+                currentUser.getNickname(),
+                currentUser.getTotalFocusSec()
+        );
+
+        return new UserRankResponseDto(top10Dto, myRankDto);
+    }
 
     // 헬퍼메서드
     private boolean isNotBlockedBy(User subject, User object) {

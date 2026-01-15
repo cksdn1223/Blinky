@@ -11,7 +11,6 @@ const PetCanvas = ({ status, onPetClick, onAnimationEnd, petName }: { status: st
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const frameRef = useRef(0);
-  const frameCountRef = useRef(0);
   const animationIdRef = useRef<number>(0);
 
   const posXRef = useRef(48); // 현재 X 위치 (0 ~ 128-32)
@@ -22,6 +21,10 @@ const PetCanvas = ({ status, onPetClick, onAnimationEnd, petName }: { status: st
   const [hoveredUser, setHoveredUser] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // 타이머 관리용
+
+  // 시간 관리를 위한 Ref
+  const lastTimeRef = useRef<number>(0);
+  const accumTimeRef = useRef<number>(0); // 누적 시간
 
   const spriteWidth = 32;
   const spriteHeight = 32;
@@ -92,30 +95,41 @@ const PetCanvas = ({ status, onPetClick, onAnimationEnd, petName }: { status: st
     const ctx = ctxRef.current;
     if (!ctx) return;
 
-    const render = () => {
+    const TARGET_FPS = 10;
+    const FRAME_INTERVAL = 1000 / TARGET_FPS;
+
+    const render = (timestamp: number) => {
       if (!img.complete) {
         animationIdRef.current = requestAnimationFrame(render);
         return;
       }
 
+      if (!lastTimeRef.current) lastTimeRef.current = timestamp;
+      const deltaTime = timestamp - lastTimeRef.current;
+      lastTimeRef.current = timestamp;
+
+      accumTimeRef.current += deltaTime;
+
       ctx.imageSmoothingEnabled = false;
-      frameCountRef.current++;
 
       const currentRow = ROW_MAP[status] ?? 0;
       const repeatFrame = [4, 5, 9].includes(currentRow) ? 8 : (currentRow === 7 ? 6 : (currentRow === 8 ? 7 : 4));
 
       // 애니메이션 프레임 업데이트
-      if (frameCountRef.current % 10 === 0) {
+      if (accumTimeRef.current >= FRAME_INTERVAL) {
         if (status === 'pounce' && frameRef.current + 1 >= repeatFrame) {
           onAnimationEnd?.();
           frameRef.current = 0;
         } else {
           frameRef.current = (frameRef.current + 1) % repeatFrame;
         }
+        accumTimeRef.current -= FRAME_INTERVAL;
       }
 
+      const timeScale = deltaTime / 16.6;
+
       if (['walk', 'run', 'jump'].includes(status)) {
-        const speed = status === 'walk' ? 0.3 : 0.5;
+        const speed = (status === 'walk' ? 0.3 : 0.5) * timeScale;
         posXRef.current += dirXRef.current * speed;
 
         if (posXRef.current >= canvasRes - renderWidth + collisionPadding) {
@@ -125,11 +139,11 @@ const PetCanvas = ({ status, onPetClick, onAnimationEnd, petName }: { status: st
           dirXRef.current = 1;
         }
 
-        posYRef.current += dirYRef.current * (speed * 0.7); // Y축은 약간 느리게 설정하면 더 자연스러움
+        posYRef.current += dirYRef.current * (speed * 0.7);
         if (posYRef.current >= canvasRes - renderHeight) {
-          dirYRef.current = -1; // 바닥 충돌
+          dirYRef.current = -1;
         } else if (posYRef.current <= 0) {
-          dirYRef.current = 1;  // 천장 충돌
+          dirYRef.current = 1;
         }
       }
 
@@ -151,8 +165,8 @@ const PetCanvas = ({ status, onPetClick, onAnimationEnd, petName }: { status: st
         spriteHeight,
         Math.floor(posXRef.current),
         Math.floor(posYRef.current),
-        renderWidth,              // 출력 너비 확대
-        renderHeight              // 출력 높이 확대
+        renderWidth,
+        renderHeight
       );
 
       ctx.restore();

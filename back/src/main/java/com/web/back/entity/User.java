@@ -26,7 +26,7 @@ public class User implements UserDetails {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = false)
+    @Column(unique = true, nullable = false)
     private String nickname;
 
     @Column(name = "total_focus_sec", nullable = false, columnDefinition = "bigint default 0")

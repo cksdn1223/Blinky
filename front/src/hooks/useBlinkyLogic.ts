@@ -77,11 +77,16 @@ export const useBlinkyLogic = () => {
   const interact = useCallback(async () => {
     if (actionTimeoutRef.current || status === 'pounce') return;
 
+    if (stats.boredom < 30) {
+      setStatus('pounce');
+      return;
+    }
+
     interactionCountRef.current += 1;
 
     // 공통 수치 업데이트 함수 (스토어 연동)
     const handleStatsUpdate = async () => {
-      // 로컬에서 즉시 반영 (Optimistic Update 효과)
+      // 로컬에서 즉시 반영
       const nextBoredom = Math.max(stats.boredom - 30, 0);
       const nextHappiness = stats.happiness + 1;
       updatePetStats(nextHappiness, nextBoredom);
@@ -97,10 +102,10 @@ export const useBlinkyLogic = () => {
           console.error("상호작용 반영 실패", e);
         }
       }
-    };
+    }; 
 
     // 특수 동작 결정
-    if (stats.boredom <= 30 || interactionCountRef.current >= 3) {
+    if (stats.boredom < 30 || interactionCountRef.current >= 3) {
       setStatus('pounce');
       interactionCountRef.current = 0;
       await handleStatsUpdate();

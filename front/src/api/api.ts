@@ -105,3 +105,8 @@ export const shareMusic = async (ownerEmail: string, data: { videoId: string | n
   })
   return response;
 }
+
+export const getRanks = async () => {
+  const response = await api.get('/api/user/rank');
+  return response.data;
+}

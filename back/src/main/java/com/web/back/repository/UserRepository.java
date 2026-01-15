@@ -13,4 +13,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     List<User> findByNicknameContainingAndIdNot(String nickname, UUID userId);
     List<User> findByEmailContainingAndIdNot(String email, UUID userId);
+    List<User> findTop10ByOrderByTotalFocusSecDesc();
+    long countByTotalFocusSecGreaterThan(Long totalFocusSec);
 }

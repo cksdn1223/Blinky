@@ -42,8 +42,8 @@ public class Pet {
 
     private static final double BOREDOM_INCREASE_RATE = 0.028;
     private static final double HAPPINESS_DECREASE_RATE = 0.00055; // 초당 감소량
-    // 헬퍼 메서드
 
+    // 헬퍼 메서드
     public void changeNickname(String nickname) {
         this.name = nickname;
     }

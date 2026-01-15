@@ -1,5 +1,6 @@
 package com.web.back.controller.user;
 
+import com.web.back.dto.user.UserRankResponseDto;
 import com.web.back.dto.user.UserResponseDto;
 import com.web.back.dto.user.UserSearchResponseDto;
 import com.web.back.entity.User;
@@ -50,6 +51,11 @@ public class UserController {
     @GetMapping("follower")
     public ResponseEntity<List<UserSearchResponseDto>> getFollowers(Principal principal) {
         return ResponseEntity.ok(userService.getFollowers(principal));
+    }
+
+    @GetMapping("/rank")
+    public ResponseEntity<UserRankResponseDto> getRanks(Principal principal) {
+        return ResponseEntity.ok(userService.getRanks(principal));
     }
 
 }
