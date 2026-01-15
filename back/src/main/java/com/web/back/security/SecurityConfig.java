@@ -40,12 +40,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 아래 경로들은 인증 없이 접근 허용
                         .requestMatchers(
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/api-docs/**",
                                 "/oauth2/**",
                                 "/login/oauth2/**",
-                                "/ws-stomp/**",
                                 "/api/room/**",
                                 "/api/share/**",
                                 "/api/connect/**"
