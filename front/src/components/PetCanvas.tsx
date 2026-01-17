@@ -93,7 +93,7 @@ const PetCanvas = ({ status, onPetClick, onAnimationEnd, petName }: { status: st
     const ctx = ctxRef.current;
     if (!ctx) return;
 
-    const render = (timestamp: number) => {
+    const render = () => {
       if (!img.complete) {
         animationIdRef.current = requestAnimationFrame(render);
         return;
