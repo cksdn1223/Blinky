@@ -3,13 +3,14 @@ import Clock from "./components/Clock";
 import PetCanvas from "./components/PetCanvas";
 import YouTubePlayer from "./components/YoutubePlayer";
 import { useBlinkyLogic } from "./hooks/useBlinkyLogic";
-import { Settings, Users } from "lucide-react";
+import { Settings, Trophy, Users } from "lucide-react";
 import Equalizer from "./components/Equalizer";
 import { changePetNickname, changeUserNickname, sendEnd } from "./api/api";
 import { useAuthStore, useSessionStore, useUIStore, useUserStore } from "./store/store";
 import SettingPanel from "./components/SettingPanel";
 import SocialPanel from "./components/SocialPanel";
 import { useSse } from "./hooks/useSse";
+import RankPanel from "./components/RankPanel";
 
 function App() {
   useSse();
@@ -18,7 +19,7 @@ function App() {
   const { status, stats, interact, setStatus } = useBlinkyLogic();
 
   const { sessionTime, startTime, isPlaying, currentVideoIds, setStartTime, setIsPlaying, addVideoId, tick, resetSession } = useSessionStore();
-  const { isSettingsOpen, isSocialOpen, toggleSettings, toggleSocial, setSocialOpen } = useUIStore();
+  const { isSettingsOpen, isSocialOpen, isRankOpen, toggleSettings, toggleSocial, toggleRank, setSocialOpen, setRankOpen } = useUIStore();
 
   const styles = getStatusStyles(stats.boredom);
 
@@ -141,6 +142,16 @@ function App() {
 
           {/* 우측 상단 버튼 그룹 */}
           <div className="absolute top-0 right-0 flex items-center gap-2.5 h-10">
+            <div className="relative">
+              <button
+                className={`px-4 py-2.5 bg-[#1a1c1e] rounded-full border border-white/10 shadow-xl transition-all ${isSocialOpen ? "border-green-500 text-green-400" : "text-white/50"}`}
+                onClick={toggleRank}
+              >
+                <Trophy size={18} />
+              </button>
+              <RankPanel isRankOpen={isRankOpen} setIsRankOpen={setRankOpen} />
+            </div>
+
             <div className="relative">
               <button
                 className={`px-4 py-2.5 bg-[#1a1c1e] rounded-full border border-white/10 shadow-xl transition-all ${isSocialOpen ? "border-green-500 text-green-400" : "text-white/50"}`}

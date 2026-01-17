@@ -91,10 +91,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 export const useUIStore = create<UIState>((set) => ({
   isSettingsOpen: false,
   isSocialOpen: false,
+  isRankOpen: false,
   setSettingsOpen: (open) => set({ isSettingsOpen: open }),
   setSocialOpen: (open) => set({ isSocialOpen: open }),
+  setRankOpen: (open) => set({ isRankOpen: open }),
   toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),
   toggleSocial: () => set((state) => ({ isSocialOpen: !state.isSocialOpen })),
+  toggleRank: () => set((state) => ({ isRankOpen: !state.isRankOpen }))
 }));
 
 export const useSocialStore = create<SocialState>((set) => ({

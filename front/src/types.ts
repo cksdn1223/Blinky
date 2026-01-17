@@ -77,10 +77,13 @@ export type SessionState = {
 export type UIState = {
   isSettingsOpen: boolean;
   isSocialOpen: boolean;
+  isRankOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
   setSocialOpen: (open: boolean) => void;
+  setRankOpen: (open: boolean) => void;
   toggleSettings: () => void;
   toggleSocial: () => void;
+  toggleRank: () => void;
 }
 
 export type FriendStatus = {
@@ -148,4 +151,15 @@ export type RoomState = {
   currentRoomOwnerNickname: string | null;
   setRoom: (email: string | null, nickname: string | null) => void;
   leaveRoom: () => void;
+}
+
+export type RankUser = {
+  rank: number;
+  nickname: string;
+  totalFocusSec: number;
+}
+
+export type RankPanelProps = {
+  isRankOpen: boolean;
+  setIsRankOpen: (isOpen: boolean) => void;
 }

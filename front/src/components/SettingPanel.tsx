@@ -35,9 +35,10 @@ function SettingPanel({
       <AnimatePresence>
         {isSettingsOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
             className="absolute right-0 top-0 w-[350px] bg-[#1a1c1e]/95 backdrop-contrast-150 border border-white/10 rounded-[1rem] p-7 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] origin-top-right"
           >
             {/* 헤더 */}
