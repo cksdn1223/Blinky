@@ -141,7 +141,7 @@ function App() {
           </div>
 
           {/* 우측 상단 버튼 그룹 */}
-          <div className="absolute top-0 right-0 flex items-center gap-2.5 h-10">
+          {token && <div className="absolute top-0 right-0 flex items-center gap-2.5 h-10">
             <div className="relative">
               <button
                 className={`px-4 py-2.5 bg-[#1a1c1e] rounded-full border border-white/10 shadow-xl transition-all ${isSocialOpen ? "border-green-500 text-green-400" : "text-white/50"}`}
@@ -178,7 +178,7 @@ function App() {
                 isSettingsOpen={isSettingsOpen}
               />
             </div>
-          </div>
+          </div>}
 
           <PetCanvas
             status={status}
